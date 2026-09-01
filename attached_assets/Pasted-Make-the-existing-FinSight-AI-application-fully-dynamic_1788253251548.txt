@@ -1,0 +1,391 @@
+Make the existing FinSight AI application fully dynamic and hackathon-demo ready.
+
+DO NOT rebuild the application from scratch.
+Preserve all existing features and improve them.
+
+==================================================
+A. EXPAND STOCK COVERAGE
+========================
+
+Add a searchable stock selector containing at least these Indian equities:
+
+RELIANCE
+TCS
+INFY
+HDFCBANK
+ICICIBANK
+ITC
+SBIN
+BHARTIARTL
+
+Do not hardcode the displayed market values.
+
+When the user selects a stock, the application must load the corresponding data and update:
+
+* Current price
+* Daily change
+* Percentage change
+* Volume
+* RSI
+* Moving average
+* Momentum
+* Sentiment
+* Technical signal
+* Fundamental signal
+* Overall AI signal
+* Confidence
+* Relevant news
+* Relevant evidence
+* Portfolio/watchlist information
+
+The AI analysis must operate on the SELECTED stock.
+
+==================================================
+B. REAL DATA / DEMO DATA TRANSPARENCY
+=====================================
+
+Use a legitimate market data source if one is already configured.
+
+If no market API is configured or the API is unavailable, use DEMO/SIMULATED data.
+
+NEVER label simulated data as LIVE.
+
+Every market-data component must display one of:
+
+● LIVE
+● SIMULATED DEMO
+● DATA UNAVAILABLE
+
+Also display:
+
+"Last updated: [timestamp]"
+
+==================================================
+C. FIX TIMESTAMP / DATA REFRESH
+===============================
+
+The current timestamp must NOT remain static.
+
+Implement dynamic timestamps.
+
+Every successful market-data fetch must update:
+
+lastUpdated
+
+using the actual timestamp of the fetch/received data.
+
+Display the timestamp in Indian Standard Time (IST).
+
+Example:
+
+LIVE
+Last updated: 01 Sep 2026, 11:42:18 AM IST
+
+Add a:
+
+REFRESH DATA
+
+button.
+
+When the user clicks Refresh:
+
+1. Fetch the latest available data.
+2. Update the market values.
+3. Update the timestamp.
+4. Recalculate the technical/volume/sentiment analysis where required.
+5. Update the AI analysis.
+6. Update the UI without requiring a full page reload.
+
+Prevent stale timestamps.
+
+==================================================
+D. MARKET OPEN/CLOSED STATUS
+============================
+
+Show:
+
+MARKET OPEN
+or
+MARKET CLOSED
+
+based on the relevant market schedule/timezone when live market data is being used.
+
+If the market is closed, do not falsely imply that prices are changing in real time.
+
+Display the timestamp of the latest available market data.
+
+==================================================
+E. DYNAMIC STOCK ANALYSIS
+=========================
+
+When the user changes:
+
+RELIANCE → TCS
+
+the entire analysis must update.
+
+When the user changes:
+
+TCS → INFY
+
+the entire analysis must update again.
+
+Do not keep the same AI output for every company.
+
+The following must be generated from the selected company's data:
+
+Technical Agent
+Fundamental Agent
+Sentiment Agent
+Synthesis Agent
+
+==================================================
+F. MULTI-AGENT DEMONSTRATION
+============================
+
+For every analysis session display:
+
+TECHNICAL AGENT
+Status: Running / Complete
+Signal
+Confidence
+Reasoning
+Latency
+
+FUNDAMENTAL AGENT
+Status: Running / Complete
+Signal
+Confidence
+Reasoning
+Retrieved evidence
+Latency
+
+SENTIMENT AGENT
+Status: Running / Complete
+Signal
+Confidence
+Reasoning
+Latency
+
+Then:
+
+SYNTHESIS AGENT
+Overall signal
+Overall confidence
+Personalized reasoning
+Key risks
+Evidence used
+Total latency
+
+Make the three specialized agents execute concurrently/independently.
+
+==================================================
+G. ADD "COMPARE STOCKS"
+=======================
+
+Add a useful comparison feature.
+
+Allow the user to select two or three stocks.
+
+Example:
+
+RELIANCE vs TCS vs INFY
+
+Display:
+
+* Price movement
+* Momentum
+* Volume anomaly
+* Sentiment
+* Fundamental signal
+* AI confidence
+* Risk
+* Overall classification
+
+Then let the Synthesis Agent explain the differences.
+
+This should be based on the actual selected data.
+
+==================================================
+H. ADD "DEMO SCENARIOS"
+=======================
+
+Create a Demo Mode with predefined scenarios that judges can run quickly.
+
+Scenario 1:
+Balanced positive signals.
+
+Scenario 2:
+Conflicting signals.
+
+Scenario 3:
+Missing financial evidence.
+
+Scenario 4:
+Different risk profiles.
+
+Each scenario must visibly demonstrate a different requirement of the hackathon.
+
+Add:
+
+RUN DEMO
+
+and:
+
+RESET DEMO
+
+buttons.
+
+==================================================
+I. PERSONALIZATION DEMONSTRATION
+================================
+
+Add:
+
+COMPARE USER PROFILES
+
+Use identical market input.
+
+Profile A:
+Conservative
+
+Profile B:
+Aggressive
+
+Show the resulting interpretations side-by-side.
+
+The market data must remain identical.
+
+Only the user profile changes.
+
+The synthesis logic must actually consider the stored risk parameters.
+
+==================================================
+J. PERFORMANCE LOG
+==================
+
+For every analysis session record actual measurable values:
+
+1. Technical Agent latency
+2. Fundamental Agent latency
+3. Sentiment Agent latency
+4. Synthesis latency
+5. Total analysis latency
+6. Portfolio risk concentration
+7. Overall confidence
+
+Store the session timestamp and selected stock.
+
+Do not generate random performance numbers.
+
+==================================================
+K. RAG EVIDENCE
+===============
+
+Make sure the Fundamental Agent retrieves actual document chunks before generating document-based claims.
+
+Display:
+
+Document
+Section/Page
+Retrieved excerpt
+Relevance
+Used by Fundamental Agent
+
+If no document can be retrieved:
+
+"Evidence unavailable"
+
+Reduce confidence and do not invent a citation.
+
+==================================================
+L. AI COPILOT
+=============
+
+Keep FinSight Copilot available on every page.
+
+It should answer questions using the currently selected stock, user profile, portfolio and available evidence.
+
+Examples:
+
+"Why is RELIANCE classified as bullish?"
+
+"Why are the agents disagreeing?"
+
+"What evidence supports the fundamental analysis?"
+
+"How does my risk profile affect this result?"
+
+"What changed since the previous analysis?"
+
+For document-related questions, display the supporting source.
+
+==================================================
+M. PORTFOLIO / WATCHLIST
+========================
+
+Make the watchlist and portfolio persistent during the session.
+
+Allow:
+
+Add stock
+Remove stock
+Change quantity
+Change average price
+
+Show:
+
+Portfolio value
+Allocation
+Gain/loss
+Risk concentration
+Selected stock exposure
+
+==================================================
+N. UI IMPROVEMENT
+=================
+
+Keep the FinSight AI dark professional finance theme.
+
+Add:
+
+* live status indicator
+* last-updated timestamp
+* refresh button
+* stock search
+* stock comparison
+* interactive charts
+* agent status indicators
+* expandable reasoning
+* evidence cards
+* confidence meters
+* risk indicators
+* responsive layout
+
+Do not make the interface cluttered.
+
+==================================================
+O. FINAL TEST
+=============
+
+Before completing this task, manually test:
+
+1. Select RELIANCE.
+2. Refresh data.
+3. Confirm timestamp changes.
+4. Select TCS.
+5. Confirm stock data and AI analysis change.
+6. Select INFY.
+7. Confirm stock data and AI analysis change.
+8. Run Compare Stocks.
+9. Run Conservative vs Aggressive profile comparison.
+10. Run a missing-evidence scenario.
+11. Run a conflicting-signal scenario.
+12. Run the full end-to-end demo.
+13. Verify the AI Copilot uses current application state.
+14. Verify no API keys are exposed.
+15. Verify no fake "LIVE" labels are used.
+
+Fix any runtime, console, API, navigation or state-management errors discovered during testing.
+
+At the end, provide a concise report stating which features are actually functional, which are demo/simulated, and which require an external API configuration.
