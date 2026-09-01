@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SignalForge Investor Intelligence"
+description = "An explainable multi-agent market intelligence cockpit for retail investors, combining simulated market data, technical, fundamental, and sentiment analysis, risk-aware synthesis, source attribution, and session performance tracking."
+version = "1.0.0"
+id = "artifacts/signalforge"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18852
+
+[services.development]
+run = "pnpm --filter @workspace/signalforge run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/signalforge", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/signalforge/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18852"
+BASE_PATH = "/"
