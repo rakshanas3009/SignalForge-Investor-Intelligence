@@ -1,0 +1,557 @@
+Upgrade the EXISTING application rather than rebuilding it from scratch.
+
+Rename the product to:
+
+FIN SIGHT AI
+
+Tagline:
+"Personalized Financial Intelligence, backed by evidence."
+
+This is a hackathon prototype for an AI-powered financial intelligence platform for retail investors.
+
+IMPORTANT:
+
+* Preserve useful existing functionality.
+* Do not delete working backend/frontend functionality.
+* Make incremental improvements to the existing project.
+* The application must remain runnable after every change.
+* Do not use fake buttons that appear functional but do nothing.
+* If a feature cannot use live data, clearly label the fallback as simulated/demo data.
+* Keep API keys and secrets in environment variables only.
+* Do not expose API keys in frontend code.
+
+==================================================
+
+1. REDESIGN THE ENTIRE UI
+   ==================================================
+
+Create a modern premium financial intelligence dashboard.
+
+Theme:
+
+* Dark professional finance/technology theme.
+* Deep navy/charcoal background.
+* Glass-like cards with subtle borders.
+* Clean typography.
+* Subtle gradients.
+* Green for positive signals.
+* Red for negative signals.
+* Amber/yellow for caution.
+* Blue/purple accents for AI features.
+* Smooth but restrained animations.
+* Responsive desktop and mobile layout.
+* Avoid excessive neon effects or gaming-style UI.
+
+The interface should look like a serious AI financial research platform rather than a generic stock website.
+
+Use the name "FinSight AI" throughout the interface.
+
+==================================================
+2. CREATE A PROPER NAVIGATION SYSTEM
+====================================
+
+Add a left sidebar or top navigation with these tabs:
+
+1. Overview
+2. Market
+3. AI Analysis
+4. Portfolio
+5. Watchlist
+6. News & Sentiment
+7. Evidence / Research
+8. Risk Lab
+9. AI Copilot
+10. System Insights
+
+Each tab should be functional and connected to the same application state.
+
+Do not create empty placeholder pages.
+
+==================================================
+3. OVERVIEW DASHBOARD
+=====================
+
+Create a professional overview page showing:
+
+* Selected stock
+* Current price
+* Daily change
+* Percentage change
+* Volume
+* Market status
+* AI overall signal
+* AI confidence
+* Risk level
+* Latest relevant news
+* Portfolio exposure
+* Watchlist summary
+
+Add an "Analyze with AI" button.
+
+When clicked, show an animated analysis state:
+
+"Technical Agent analyzing..."
+"Fundamental Agent retrieving evidence..."
+"Sentiment Agent analyzing news..."
+"Synthesis Agent generating personalized intelligence..."
+
+Then display the final result.
+
+==================================================
+4. MARKET TAB
+=============
+
+Create an interactive market page.
+
+Include:
+
+* Search for a stock/company
+* Current price
+* Percentage change
+* Interactive price chart
+* Volume chart
+* Basic technical indicators
+* RSI
+* Moving average
+* Momentum
+* Time range selector:
+  1D
+  1W
+  1M
+  6M
+  1Y
+
+Use live market data through an appropriate public API if available and legally usable.
+
+Do not invent that data is live.
+
+If no live API is available, create a clearly labelled simulated-data mode with realistic sample data.
+
+Show the data timestamp:
+"Last updated: [timestamp]"
+
+==================================================
+5. AI ANALYSIS TAB
+==================
+
+This is the CORE feature.
+
+Create three specialized AI agent cards:
+
+TECHNICAL AGENT
+
+* Analyze price
+* Volume
+* RSI
+* Moving average
+* Momentum
+* Produce:
+  Signal
+  Confidence
+  Reasons
+
+FUNDAMENTAL AGENT
+
+* Analyze financial information
+* Use RAG/document retrieval
+* Retrieve relevant evidence before generating conclusions
+* Produce:
+  Signal
+  Confidence
+  Reasons
+  Sources
+
+SENTIMENT AGENT
+
+* Analyze relevant news
+* Produce:
+  Sentiment
+  Confidence
+  Key themes
+  Reasons
+
+The three agents should execute independently/in parallel.
+
+Then create a SYNTHESIS AGENT.
+
+The synthesis agent receives:
+
+* Technical result
+* Fundamental result
+* Sentiment result
+* User risk profile
+* Portfolio exposure
+
+It produces:
+
+* Overall signal
+* Confidence
+* Reasoning
+* Key risks
+* Opportunities
+* Evidence used
+
+Make the agent states visible to the user.
+
+==================================================
+6. RAG / EVIDENCE SYSTEM
+========================
+
+Create a Research/Evidence tab.
+
+Implement a document retrieval workflow for financial/regulatory documents.
+
+The Fundamental Agent must:
+
+1. Receive a question/query.
+2. Search the document corpus.
+3. Retrieve relevant sections.
+4. Pass retrieved context to the AI.
+5. Generate the fundamental analysis.
+6. Display the supporting document/source.
+
+Show evidence cards containing:
+
+* Document name
+* Relevant section
+* Page/section if available
+* Retrieval relevance
+* Short excerpt
+* "Used by Fundamental Agent"
+
+Never claim that a document supports a conclusion unless the document was actually retrieved.
+
+If the document corpus is not yet available, create a clearly labelled demo corpus and make the architecture ready for real documents.
+
+==================================================
+7. PORTFOLIO TAB
+================
+
+Create an interactive portfolio page.
+
+Allow the user to add holdings using:
+
+* Stock
+* Quantity
+* Average purchase price
+
+Calculate:
+
+* Current value
+* Gain/loss
+* Portfolio allocation
+* Sector exposure
+* Concentration risk
+
+Show a visual allocation chart.
+
+Do not provide direct buy/sell execution.
+
+==================================================
+8. WATCHLIST TAB
+================
+
+Allow users to add/remove stocks.
+
+For each watchlist item show:
+
+* Price
+* Daily change
+* AI signal
+* AI confidence
+* Risk level
+* Last analysis time
+
+Allow clicking a stock to open its detailed AI analysis.
+
+==================================================
+9. NEWS & SENTIMENT TAB
+=======================
+
+Create a news intelligence page.
+
+Show:
+
+* Latest relevant news
+* Positive/negative/neutral sentiment
+* Sentiment score
+* Key topics
+* Time published
+* Source
+
+Group news into:
+
+Positive
+Neutral
+Negative
+
+Add an overall sentiment trend visualization.
+
+Use real data when an appropriate API is configured; otherwise clearly label demo/simulated news.
+
+==================================================
+10. RISK LAB
+============
+
+Create an interactive risk-personalization section.
+
+Allow the user to select:
+
+Conservative
+Moderate
+Aggressive
+
+Also allow:
+
+* Investment horizon
+* Portfolio exposure
+* Sector concentration
+
+Show how changing the risk profile changes the AI interpretation.
+
+IMPORTANT:
+The market data should remain the same while the personalized final interpretation can change based on the user profile.
+
+Display:
+
+Market Signal
+Personalized Interpretation
+Risk Level
+Key Concerns
+
+==================================================
+11. AI COPILOT
+==============
+
+Add a floating AI assistant button accessible throughout the website.
+
+When clicked, open an AI chat interface.
+
+Name it:
+
+"FinSight Copilot"
+
+The Copilot should help the user understand the information already available in the application.
+
+Example questions:
+
+"What is driving this stock's current signal?"
+
+"Explain the fundamental analysis simply."
+
+"What evidence supports this conclusion?"
+
+"Why is my portfolio considered concentrated?"
+
+"How does my risk profile affect this analysis?"
+
+"Summarize today's important developments."
+
+The Copilot should use the application's available data and retrieved evidence where appropriate.
+
+Show sources when answering questions about financial documents.
+
+Do not present the Copilot as a guaranteed financial advisor.
+
+Include a small disclaimer:
+"AI-generated information is for educational and research purposes and may contain errors."
+
+==================================================
+12. FAILURE HANDLING
+====================
+
+Create visible states for:
+
+* Missing financial document
+* API unavailable
+* News unavailable
+* Conflicting agent signals
+* Stale data
+* Low-confidence analysis
+
+For example:
+
+"Fundamental evidence unavailable."
+
+Then:
+
+* Reduce confidence
+* Explain what is missing
+* Do not fabricate evidence
+
+If agents disagree, show:
+
+TECHNICAL: BULLISH
+FUNDAMENTAL: NEGATIVE
+SENTIMENT: NEUTRAL
+
+Then explain the disagreement instead of hiding it.
+
+==================================================
+13. SYSTEM INSIGHTS TAB
+=======================
+
+Create a system-performance dashboard.
+
+Show:
+
+* Agent latency
+* Total analysis time
+* Number of retrieved documents
+* Retrieval relevance
+* AI confidence
+* Data freshness
+* Portfolio risk concentration
+* Number of successful analyses
+* Number of failed/partial analyses
+
+Use real values calculated from the application where possible.
+
+Do not display invented metrics as real measurements.
+
+==================================================
+14. DATA FRESHNESS
+==================
+
+Make the application clearly show:
+
+LIVE
+or
+SIMULATED
+
+for every external-data component.
+
+Show:
+
+"Last updated: [timestamp]"
+
+Add a refresh button.
+
+When live APIs are configured:
+
+* fetch current data
+* update the dashboard
+* update timestamps
+* handle API errors gracefully
+
+Do not hardcode a claim that data is live.
+
+==================================================
+15. INTERACTIVITY
+=================
+
+Make the website feel like a real application.
+
+Add:
+
+* Search
+* Dropdowns
+* Filters
+* Charts
+* Tooltips
+* Expandable evidence cards
+* Agent status animations
+* Refresh buttons
+* Watchlist actions
+* Portfolio editing
+* Risk profile controls
+* AI chat
+* Stock selection
+* Date/time filters
+
+Every major button should perform a real action.
+
+==================================================
+16. ARCHITECTURE
+================
+
+Keep the application modular.
+
+Separate:
+
+Frontend
+Backend/API
+AI agents
+Data retrieval
+RAG/document retrieval
+Database/storage
+
+Use environment variables for API keys.
+
+Create clear API interfaces so the AI system can communicate with the backend.
+
+The final architecture should conceptually be:
+
+User
+↓
+Frontend
+↓
+Backend/API
+↓
+AI Orchestrator
+↓
+┌───────────────┬────────────────┬───────────────┐
+Technical Agent Fundamental Agent Sentiment Agent
+↓
+RAG Retrieval
+↓
+Evidence/Source
+↓
+Risk Personalization
+↓
+Synthesis Agent
+↓
+Final Intelligence
+↓
+Frontend
+
+==================================================
+17. DEMO MODE
+=============
+
+Because this is a hackathon prototype, create a reliable DEMO MODE.
+
+Demo mode should contain a small prepared dataset for at least 3 companies/stocks.
+
+Use:
+
+* Market data
+* News
+* Financial document snippets
+* User profiles
+
+Clearly label demo data as simulated/demo data.
+
+The demo must still demonstrate:
+
+1. Three agents
+2. Parallel analysis
+3. RAG/evidence
+4. Personalization
+5. Synthesis
+6. Failure handling
+7. AI Copilot
+
+==================================================
+18. FINAL QUALITY CHECK
+=======================
+
+Before finishing:
+
+* Fix runtime errors.
+* Fix broken navigation.
+* Fix console errors where possible.
+* Make sure all pages load.
+* Make sure Analyze works.
+* Make sure the AI flow works.
+* Make sure loading states work.
+* Make sure API failures do not crash the app.
+* Make sure the UI is responsive.
+* Make sure no API keys are exposed.
+* Make sure demo mode works without external APIs.
+
+Do not just create UI mockups.
+
+Implement functional interactions and connect the frontend to actual backend/AI logic wherever possible.
+
+Prioritize a stable end-to-end hackathon demo over unnecessary complexity.

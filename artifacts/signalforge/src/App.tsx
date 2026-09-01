@@ -1,299 +1,196 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Activity,
-  ArrowRight,
-  Bell,
-  BookOpen,
-  BrainCircuit,
-  Check,
-  ChevronDown,
-  CircleHelp,
-  Clock3,
-  Database,
-  Download,
-  Eye,
-  FileText,
-  GitBranch,
-  Info,
-  LayoutDashboard,
-  LineChart,
-  ListFilter,
-  Menu,
-  MoreHorizontal,
-  PanelLeftClose,
-  Play,
-  Plus,
-  Radar,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  Star,
-  Target,
-  TrendingDown,
-  TrendingUp,
-  UserRound,
-  Zap,
+  Activity, AlertTriangle, BarChart3, BookOpen, Bot, BrainCircuit, BriefcaseBusiness,
+  Check, ChevronDown, CircleHelp, Clock3, FileSearch, Gauge, LineChart, Menu,
+  MessageSquare, Newspaper, Play, Plus, RefreshCw, Search, Settings2, ShieldCheck,
+  SlidersHorizontal, Sparkles, Star, Target, TrendingDown, TrendingUp, X, Zap,
 } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 
-type Risk = "Conservative" | "Balanced" | "Growth";
-type AgentState = "ready" | "running" | "complete" | "degraded";
+type Tab = "overview" | "market" | "analysis" | "portfolio" | "watchlist" | "news" | "evidence" | "risk" | "copilot" | "system";
+type Risk = "Conservative" | "Moderate" | "Aggressive";
+type AgentKey = "technical" | "fundamental" | "sentiment";
+type AgentState = "idle" | "running" | "complete" | "degraded" | "error";
+type Tone = "positive" | "negative" | "neutral" | "caution";
 
 type Stock = {
-  symbol: string;
-  name: string;
-  exchange: string;
-  price: string;
-  move: string;
-  moveValue: string;
-  tone: "up" | "down" | "flat";
-  tag: string;
-  watch: boolean;
+  symbol: string; name: string; sector: string; price: number; move: number; volume: string;
+  exchange: string; status: "Open" | "Delayed"; watch: boolean; marketCap: string;
 };
+type Holding = { symbol: string; quantity: number; average: number };
+type Evidence = { id: string; label: string; source: string; type: string; relevance: number; excerpt: string; timestamp: string; status: "Cited" | "Delayed" | "Missing" };
 
-const initialStocks: Stock[] = [
-  { symbol: "INFY", name: "Infosys Ltd.", exchange: "NSE", price: "₹1,864.20", move: "+1.84%", moveValue: "+₹33.70", tone: "up", tag: "IT services", watch: true },
-  { symbol: "RELIANCE", name: "Reliance Industries", exchange: "NSE", price: "₹2,941.50", move: "+0.62%", moveValue: "+₹18.10", tone: "up", tag: "Conglomerate", watch: true },
-  { symbol: "TCS", name: "Tata Consultancy Services", exchange: "NSE", price: "₹3,812.75", move: "-0.28%", moveValue: "-₹10.70", tone: "down", tag: "IT services", watch: false },
-  { symbol: "HDFCBANK", name: "HDFC Bank Ltd.", exchange: "NSE", price: "₹1,742.90", move: "+0.41%", moveValue: "+₹7.05", tone: "up", tag: "Private bank", watch: false },
-  { symbol: "BHARTIARTL", name: "Bharti Airtel Ltd.", exchange: "NSE", price: "₹1,628.30", move: "+2.16%", moveValue: "+₹34.40", tone: "up", tag: "Telecom", watch: false },
-  { symbol: "ITC", name: "ITC Ltd.", exchange: "NSE", price: "₹432.60", move: "—", moveValue: "₹0.00", tone: "flat", tag: "Consumer", watch: false },
+const STOCKS: Stock[] = [
+  { symbol: "HDFCBANK", name: "HDFC Bank", sector: "Financials", price: 1742.9, move: 0.41, volume: "8.4M", exchange: "NSE", status: "Open", watch: true, marketCap: "₹13.2T" },
+  { symbol: "INFY", name: "Infosys", sector: "Technology", price: 1864.2, move: 1.84, volume: "5.1M", exchange: "NSE", status: "Open", watch: true, marketCap: "₹7.7T" },
+  { symbol: "RELIANCE", name: "Reliance Industries", sector: "Energy", price: 2941.5, move: 0.62, volume: "6.7M", exchange: "NSE", status: "Open", watch: true, marketCap: "₹19.9T" },
+  { symbol: "TCS", name: "Tata Consultancy Services", sector: "Technology", price: 3812.75, move: -0.28, volume: "2.9M", exchange: "NSE", status: "Delayed", watch: false, marketCap: "₹13.8T" },
+  { symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Communication", price: 1628.3, move: 2.16, volume: "4.2M", exchange: "NSE", status: "Open", watch: false, marketCap: "₹9.2T" },
+  { symbol: "ITC", name: "ITC", sector: "Consumer", price: 432.6, move: 0, volume: "12.3M", exchange: "NSE", status: "Open", watch: false, marketCap: "₹5.4T" },
+  { symbol: "ICICIBANK", name: "ICICI Bank", sector: "Financials", price: 1187.45, move: -0.64, volume: "7.8M", exchange: "NSE", status: "Open", watch: false, marketCap: "₹8.3T" },
 ];
 
-const agentMeta = [
-  { id: "technical", label: "Technical", desc: "Trend, momentum & structure", icon: LineChart, color: "teal" },
-  { id: "fundamental", label: "Fundamental + RAG", desc: "Earnings, valuation & filings", icon: Database, color: "orange" },
-  { id: "sentiment", label: "Sentiment", desc: "News tone & market narrative", icon: Radar, color: "rose" },
-] as const;
-
-const traceSteps = [
-  { time: "09:41:07", title: "Universe filtered", text: "NSE · large-cap watchlist · ₹1,742.90 last", icon: ListFilter, tone: "neutral" },
-  { time: "09:41:09", title: "Signals normalized", text: "3 agents returned scores on a −1 to +1 scale", icon: SlidersHorizontal, tone: "teal" },
-  { time: "09:41:11", title: "Risk stance applied", text: "Balanced profile reduced momentum weight by 8%", icon: ShieldCheck, tone: "orange" },
-  { time: "09:41:12", title: "Conflict detected", text: "Price structure and news narrative disagree", icon: GitBranch, tone: "rose" },
+const initialHoldings: Holding[] = [
+  { symbol: "HDFCBANK", quantity: 84, average: 1588.3 },
+  { symbol: "INFY", quantity: 46, average: 1714.5 },
+  { symbol: "RELIANCE", quantity: 28, average: 2762.8 },
+  { symbol: "ITC", quantity: 120, average: 401.2 },
 ];
 
-function Shell({ children, page, setPage }: { children: ReactNode; page: string; setPage: (page: string) => void }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [notice, setNotice] = useState("");
-  useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(""), 2400);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-  const navItems = [
-    { id: "cockpit", label: "Analysis cockpit", icon: LayoutDashboard, href: "/" },
-    { id: "activity", label: "Activity & performance", icon: Activity, href: "/activity" },
-    { id: "methodology", label: "Architecture & method", icon: GitBranch, href: "/methodology" },
+const initialEvidence: Evidence[] = [
+  { id: "ev-01", label: "HDFC Bank Q4 FY24 filing", source: "BSE India / Filing", type: "Fundamental", relevance: 94, excerpt: "Net interest income grew 24.4% year over year; asset quality remains stable in the reported quarter.", timestamp: "28 Apr 2024 · 16:12 IST", status: "Cited" },
+  { id: "ev-02", label: "HDFC Bank investor presentation", source: "Company IR", type: "Fundamental", relevance: 88, excerpt: "Management outlines a measured deposit growth plan and continued investment in digital distribution.", timestamp: "28 Apr 2024 · 15:48 IST", status: "Cited" },
+  { id: "ev-03", label: "Rate outlook coverage", source: "Reuters India", type: "Sentiment", relevance: 71, excerpt: "Traders weigh sticky inflation against the prospect of a stable rate environment.", timestamp: "07 May 2024 · 09:02 IST", status: "Delayed" },
+  { id: "ev-04", label: "Latest exchange volume snapshot", source: "NSE India", type: "Market", relevance: 83, excerpt: "Volume is 1.14x the 20-day average at the latest simulated observation.", timestamp: "Today · 09:40 IST", status: "Cited" },
+  { id: "ev-05", label: "Sector risk note", source: "Research archive", type: "Risk", relevance: 0, excerpt: "No matching document was returned for this query. Confidence is reduced; no evidence has been fabricated.", timestamp: "Today · 09:41 IST", status: "Missing" },
+];
+
+const agentInfo: Record<AgentKey, { title: string; description: string; icon: typeof LineChart; tint: string }> = {
+  technical: { title: "Technical", description: "Trend, momentum & structure", icon: LineChart, tint: "blue" },
+  fundamental: { title: "Fundamental + RAG", description: "Filings, valuation & evidence", icon: FileSearch, tint: "purple" },
+  sentiment: { title: "Sentiment", description: "News tone & narrative", icon: Newspaper, tint: "amber" },
+};
+const pathFor: Record<Tab, string> = {
+  overview: "/", market: "/market", analysis: "/analysis", portfolio: "/portfolio", watchlist: "/watchlist",
+  news: "/news", evidence: "/evidence", risk: "/risk", copilot: "/copilot", system: "/system",
+};
+const labelFor: Record<Tab, string> = {
+  overview: "Overview", market: "Market", analysis: "AI Analysis", portfolio: "Portfolio", watchlist: "Watchlist",
+  news: "News & Sentiment", evidence: "Evidence / Research", risk: "Risk Lab", copilot: "AI Copilot", system: "System Insights",
+};
+const readLocal = <T,>(key: string, fallback: T): T => {
+  try { const value = localStorage.getItem(key); return value ? JSON.parse(value) as T : fallback; } catch { return fallback; }
+};
+const formatINR = (value: number) => `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+const nowLabel = () => new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+
+function Shell({ children, tab, setTab, onCopilot, copilotOpen }: { children: ReactNode; tab: Tab; setTab: (tab: Tab) => void; onCopilot: () => void; copilotOpen: boolean }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const navGroups = [
+    { title: "Workspace", items: ["overview", "market", "analysis", "portfolio", "watchlist"] as Tab[] },
+    { title: "Intelligence", items: ["news", "evidence", "risk", "copilot", "system"] as Tab[] },
   ];
-  return (
-    <div className="app-frame">
-      <aside className={`sidebar ${menuOpen ? "sidebar-open" : ""}`} data-testid="sidebar-navigation">
-        <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-          <div>
-            <div className="brand-name">Signal<span>Forge</span></div>
-            <div className="brand-caption">research cockpit</div>
-          </div>
-          <button className="icon-btn sidebar-close" onClick={() => setMenuOpen(false)} data-testid="button-close-navigation" aria-label="Close navigation"><PanelLeftClose size={17} /></button>
-        </div>
-        <div className="desk-status"><span className="live-dot"></span><span>Local demo desk</span><span className="mono">v0.9.4</span></div>
-        <nav className="primary-nav" aria-label="Primary navigation">
-          <div className="nav-label">Workspace</div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.id} href={item.href} onClick={() => { setPage(item.id); setMenuOpen(false); }} className={`nav-item ${page === item.id ? "active" : ""}`} data-testid={`link-${item.id}`}>
-                <Icon size={17} strokeWidth={1.8} /><span>{item.label}</span>{page === item.id && <span className="nav-pip"></span>}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="sidebar-rule"></div>
-        <div className="nav-label">Saved context</div>
-        <button className="watch-context" onClick={() => { setPage("cockpit"); }} data-testid="button-open-watchlist">
-          <div className="context-icon"><Star size={15} fill="currentColor" /></div>
-          <div><strong>Core watchlist</strong><small>6 symbols · NSE</small></div>
-          <ChevronDown size={15} className="context-chevron" />
-        </button>
-        <div className="sidebar-bottom">
-          <div className="safety-card">
-            <ShieldCheck size={16} />
-            <div><strong>Safety rail on</strong><small>Signals are research, not advice.</small></div>
-          </div>
-          <div className="profile-row" data-testid="text-user-profile">
-            <div className="avatar">AR</div><div><strong>Arjun Rao</strong><small>Balanced stance</small></div><MoreHorizontal size={17} className="muted-icon" />
-          </div>
-        </div>
-      </aside>
-      <div className="main-column">
-        <header className="topbar">
-          <button className="icon-btn menu-toggle" onClick={() => setMenuOpen(true)} data-testid="button-open-navigation" aria-label="Open navigation"><Menu size={20} /></button>
-          <div className="crumb"><span>SignalForge</span><span className="crumb-slash">/</span><strong>{page === "cockpit" ? "Analysis cockpit" : page === "activity" ? "Activity & performance" : "Architecture & method"}</strong></div>
-          <div className="topbar-actions">
-            <span className="market-open"><i></i> NSE live session <span className="mono">09:41 IST</span></span>
-            <button className="icon-btn" onClick={() => setNotice("No new desk alerts")} data-testid="button-notifications" aria-label="Notifications"><Bell size={17} /></button>
-            <button className="icon-btn" onClick={() => setNotice("Tip: start with your risk stance, then compare the agent evidence")} data-testid="button-help" aria-label="Help"><CircleHelp size={17} /></button>
-          </div>
-        </header>
-        <main className="content-area">{children}</main>
-        {notice && <div className="toast-message shell-toast" role="status" data-testid="status-shell-toast"><Check size={14} />{notice}</div>}
-      </div>
+  return <div className="app-shell">
+    <aside className={`sidebar ${mobileOpen ? "open" : ""}`} data-testid="sidebar-navigation">
+      <div className="brand"><div className="brand-symbol"><span></span><span></span><span></span></div><div><strong>FinSight <i>AI</i></strong><small>PERSONAL FINANCE INTELLIGENCE</small></div><button className="mobile-close icon-button" onClick={() => setMobileOpen(false)} data-testid="button-close-sidebar" aria-label="Close navigation"><X size={17} /></button></div>
+      <div className="demo-badge"><span className="status-dot"></span><span>SIMULATED DEMO MODE</span><span className="mono">LOCAL</span></div>
+      <nav className="sidebar-nav" aria-label="Main navigation">{navGroups.map(group => <div key={group.title}><div className="nav-group-label">{group.title}</div>{group.items.map(item => {
+        const Icon = ({ overview: BarChart3, market: LineChart, analysis: BrainCircuit, portfolio: BriefcaseBusiness, watchlist: Star, news: Newspaper, evidence: BookOpen, risk: ShieldCheck, copilot: MessageSquare, system: Gauge } as Record<Tab, typeof BarChart3>)[item];
+        return <button key={item} className={`nav-link ${tab === item ? "active" : ""}`} onClick={() => { setTab(item); setMobileOpen(false); }} data-testid={`button-nav-${item}`}><Icon size={16} /><span>{labelFor[item]}</span>{tab === item && <b></b>}</button>;
+      })}</div>)}</nav>
+      <div className="sidebar-bottom"><div className="safety-rail"><ShieldCheck size={15} /><span><strong>Safety rail active</strong><small>No orders · no live claims</small></span></div><div className="user-chip"><span className="avatar">AR</span><span><strong>Arjun Rao</strong><small>Moderate profile</small></span><span className="online-dot"></span></div></div>
+    </aside>
+    <div className="main-column">
+      <header className="topbar"><button className="menu-button icon-button" onClick={() => setMobileOpen(true)} data-testid="button-open-sidebar" aria-label="Open navigation"><Menu size={19} /></button><div className="breadcrumbs"><span>FinSight AI</span><i>/</i><strong>{labelFor[tab]}</strong></div><div className="topbar-right"><div className="session-pill"><span className="status-dot"></span> NSE session <span className="mono">09:41 IST</span></div><button className="icon-button" data-testid="button-help" aria-label="Help"><CircleHelp size={17} /></button><button className="profile-mini" onClick={() => setTab("risk")} data-testid="button-open-profile"><span className="avatar small">AR</span><ChevronDown size={14} /></button></div></header>
+      <main className="content">{children}</main>
     </div>
-  );
+    <button className={`copilot-fab ${copilotOpen ? "is-open" : ""}`} onClick={onCopilot} data-testid="button-open-copilot"><Bot size={18} /><span>Ask FinSight</span><kbd>⌘ K</kbd></button>
+  </div>;
 }
 
-function SectionHeading({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
-  return <div className="section-heading"><div>{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1>{title}</h1>{description && <p>{description}</p>}</div>{action}</div>;
+function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: ReactNode }) {
+  return <div className="page-header"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{action}</div>;
+}
+function Panel({ children, className = "", testId }: { children: ReactNode; className?: string; testId?: string }) { return <section className={`panel ${className}`} data-testid={testId}>{children}</section>; }
+function PanelHeading({ title, eyebrow, action }: { title: string; eyebrow?: string; action?: ReactNode }) { return <div className="panel-heading"><div>{eyebrow && <span className="micro-label">{eyebrow}</span>}<h2>{title}</h2></div>{action}</div>; }
+function StatusBadge({ tone, children }: { tone: Tone; children: ReactNode }) { return <span className={`status-badge ${tone}`}><i></i>{children}</span>; }
+function MiniChart({ tone = "positive", volume = false }: { tone?: Tone; volume?: boolean }) {
+  const points = tone === "negative" ? "0,62 22,54 41,58 64,38 85,44 107,28 128,34 150,18 174,27 198,12 222,21 248,8" : "0,66 22,59 41,61 64,46 85,50 107,33 128,39 150,20 174,30 198,17 222,22 248,8";
+  return <svg className={`mini-chart ${volume ? "volume-chart" : ""}`} viewBox="0 0 248 76" preserveAspectRatio="none" aria-label={volume ? "Simulated volume chart" : "Simulated price chart"} data-testid={volume ? "chart-volume-mini" : "chart-price-mini"}><defs><linearGradient id={`fill-${tone}-${volume}`} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={tone === "negative" ? "#ef7b79" : "#54c7a0"} stopOpacity=".24" /><stop offset="1" stopColor={tone === "negative" ? "#ef7b79" : "#54c7a0"} stopOpacity="0" /></linearGradient></defs>{volume ? [20, 28, 16, 38, 24, 48, 31, 22, 44, 36, 54, 42, 49, 30, 58, 36, 45, 51, 39, 55, 47, 63, 56, 44].map((h, i) => <rect key={i} x={i * 10 + 3} y={76 - h} width="5" height={h} rx="1" fill="#6681bd" opacity={i % 3 === 0 ? .9 : .42} />) : <><path d={`M0,76 L${points} L248,76 Z`} fill={`url(#fill-${tone}-${volume})`} /><polyline points={points} fill="none" stroke={tone === "negative" ? "#ef7b79" : "#54c7a0"} strokeWidth="2" /></>}</svg>;
 }
 
-function Sparkline({ tone = "teal", large = false }: { tone?: "teal" | "orange" | "rose"; large?: boolean }) {
-  const points = tone === "rose" ? "0,25 16,21 31,24 47,17 64,19 80,11 98,15 115,8 133,12 149,3 166,7 184,2" : tone === "orange" ? "0,25 17,20 31,22 47,16 64,19 81,12 96,14 113,6 132,10 148,6 166,8 184,2" : "0,26 16,22 31,23 47,14 64,17 80,10 97,12 115,7 132,8 149,3 166,6 184,1";
-  return <svg className={`sparkline ${large ? "sparkline-large" : ""}`} viewBox="0 0 184 30" preserveAspectRatio="none" aria-hidden="true"><path className={`spark-fill ${tone}`} d={`M0,30 L${points} L184,30 Z`} /><polyline className={`spark-line ${tone}`} points={points} /></svg>;
+function AgentCard({ agent, state, onRetry }: { agent: AgentKey; state: AgentState; onRetry: () => void }) {
+  const info = agentInfo[agent]; const Icon = info.icon; const progress = state === "complete" || state === "degraded" ? "100%" : state === "running" ? "68%" : state === "error" ? "26%" : "8%";
+  return <div className={`agent-card ${state}`} data-testid={`card-agent-${agent}`}><div className="agent-heading"><div className={`agent-icon ${info.tint}`}><Icon size={17} /></div><div><strong>{info.title}</strong><small>{info.description}</small></div><span className={`agent-state ${state}`}>{state === "running" ? "RUNNING" : state === "complete" ? "READY" : state === "degraded" ? "DEGRADED" : state === "error" ? "ERROR" : "QUEUED"}</span></div><div className="progress-track"><span style={{ width: progress }}></span></div><div className="agent-foot">{state === "running" ? <><span className="processing"><span></span> Comparing sources</span><span className="mono">14.2s</span></> : state === "complete" ? <><span className="complete"><Check size={12} /> Structured output ready</span><strong>{agent === "technical" ? "+0.71" : agent === "fundamental" ? "+0.54" : "-0.18"}</strong></> : state === "degraded" ? <><span className="caution"><AlertTriangle size={12} /> Partial data</span><button className="text-button" onClick={onRetry} data-testid={`button-retry-${agent}`}>Retry</button></> : state === "error" ? <><span className="negative"><X size={12} /> Source unavailable</span><button className="text-button" onClick={onRetry} data-testid={`button-retry-${agent}`}>Retry</button></> : <span className="muted">Waiting for run</span>}</div></div>;
 }
 
-function StockRow({ stock, selected, onSelect, onToggleWatch }: { stock: Stock; selected: boolean; onSelect: () => void; onToggleWatch: () => void }) {
-  return (
-    <div className={`stock-row ${selected ? "selected" : ""}`} data-testid={`row-stock-${stock.symbol}`}>
-      <button className="stock-main" onClick={onSelect} data-testid={`button-select-stock-${stock.symbol}`}>
-        <span className={`ticker-badge ticker-${stock.symbol.toLowerCase().slice(0, 2)}`}>{stock.symbol.slice(0, 2)}</span>
-        <span className="stock-name"><strong>{stock.symbol}</strong><small>{stock.name}</small></span>
-      </button>
-      <span className="stock-tag">{stock.tag}</span>
-      <span className="stock-price">{stock.price}<small>{stock.exchange}</small></span>
-      <span className={`stock-move ${stock.tone}`}><span>{stock.tone === "up" ? <TrendingUp size={13} /> : stock.tone === "down" ? <TrendingDown size={13} /> : null}{stock.move}</span><small>{stock.moveValue}</small></span>
-      <button className={`star-btn ${stock.watch ? "starred" : ""}`} onClick={onToggleWatch} data-testid={`button-toggle-watch-${stock.symbol}`} aria-label={`${stock.watch ? "Remove" : "Add"} ${stock.symbol} ${stock.watch ? "from" : "to"} watchlist`}><Star size={16} fill={stock.watch ? "currentColor" : "none"} /></button>
-    </div>
-  );
+function SignalCard({ risk, selected, analysisRunning, onRun }: { risk: Risk; selected: Stock; analysisRunning: boolean; onRun: () => void }) {
+  const signal = risk === "Aggressive" ? "WATCH / BUILD" : "HOLD / OBSERVE";
+  const confidence = risk === "Conservative" ? 57 : risk === "Moderate" ? 63 : 68;
+  return <Panel className="signal-panel" testId="card-signal-synthesis"><PanelHeading title="Signal synthesis" eyebrow="03 / DECISION" action={<StatusBadge tone="positive">Risk-aware</StatusBadge>} /><div className="signal-main"><span className="micro-label">CURRENT SIGNAL · {selected.symbol}</span><strong data-testid="status-final-signal">{analysisRunning ? "WORKING" : signal}</strong><p>{analysisRunning ? "Waiting for parallel agent outputs." : risk === "Aggressive" ? "Constructive structure supports measured participation; keep the conflict visible." : "Evidence is mixed; patience has the edge until narrative confirms price."}</p><div className="confidence-line"><span>AI confidence</span><strong data-testid="text-ai-confidence">{analysisRunning ? "—" : `${confidence}/100`}</strong></div><div className="confidence-track"><span style={{ width: analysisRunning ? "18%" : `${confidence}%` }}></span></div></div><div className="signal-stats"><div><span>Opportunity</span><strong className="positive">Measured upside</strong></div><div><span>Key risk</span><strong className="negative">Narrative conflict</strong></div></div><div className="reasoning"><div><BrainCircuit size={15} /><span>Why this signal</span></div><p>Price structure remains constructive and fundamentals support engagement. Sentiment is noisy, so the synthesis reduces conviction rather than hiding the disagreement.</p><button className="inline-button" onClick={() => window.dispatchEvent(new CustomEvent("open-evidence"))} data-testid="button-open-signal-evidence">View evidence trail <span>→</span></button></div><button className="run-cta" onClick={onRun} disabled={analysisRunning} data-testid="button-run-analysis">{analysisRunning ? <><RefreshCw size={16} className="spin" /> Agents are working in parallel</> : <><Play size={15} fill="currentColor" /> {signal === "HOLD / OBSERVE" ? "Run full analysis" : "Run again"}</>}</button><div className="disclaimer"><ShieldCheck size={14} /> Research output only · no orders placed</div></Panel>;
 }
 
-function AgentCard({ agent, state, score, onRetry }: { agent: typeof agentMeta[number]; state: AgentState; score: string; onRetry: () => void }) {
-  const Icon = agent.icon;
-  const isRunning = state === "running";
-  return (
-    <div className={`agent-card ${state}`} data-testid={`card-agent-${agent.id}`}>
-      <div className="agent-top"><div className={`agent-icon ${agent.color}`}><Icon size={18} /></div><div className="agent-title"><strong>{agent.label}</strong><small>{agent.desc}</small></div><span className={`agent-state-dot ${state}`}></span></div>
-      <div className="agent-progress"><span style={{ width: state === "complete" || state === "degraded" ? "100%" : isRunning ? "66%" : "12%" }}></span></div>
-      <div className="agent-bottom">{state === "complete" && <><span className="agent-status"><Check size={13} /> Complete</span><strong className="agent-score">{score}</strong></>}{state === "running" && <><span className="agent-status running-status"><span className="mini-pulse"></span> Processing</span><span className="mono">14.2s</span></>}{state === "degraded" && <><span className="agent-status degraded-status"><Info size={13} /> Partial data</span><button className="text-btn" onClick={onRetry} data-testid={`button-retry-agent-${agent.id}`}>Retry</button></>}{state === "ready" && <span className="agent-status muted-status">Queued</span>}</div>
-    </div>
-  );
+function Overview({ stocks, selectedSymbol, setSelectedSymbol, risk, analysisRunning, agentStates, onRun, onRetry }: { stocks: Stock[]; selectedSymbol: string; setSelectedSymbol: (s: string) => void; risk: Risk; analysisRunning: boolean; agentStates: Record<AgentKey, AgentState>; onRun: () => void; onRetry: (key: AgentKey) => void }) {
+  const selected = stocks.find(s => s.symbol === selectedSymbol) ?? stocks[0];
+  return <div className="page-enter"><PageHeader eyebrow="Decision workspace · 01" title="Overview" description="A single research surface for turning market questions into auditable, risk-aware signals." action={<div className="header-actions"><span className="simulated-tag">SIMULATED DATA · {nowLabel()} IST</span><button className="secondary-button" onClick={onRun} data-testid="button-new-analysis"><Plus size={15} /> New analysis</button></div>} /><div className="market-ribbon" data-testid="status-market-ribbon"><div><span>NIFTY 50</span><strong>22,957.10</strong><em className="positive">+0.78%</em></div><div><span>SENSEX</span><strong>75,901.41</strong><em className="positive">+0.65%</em></div><div><span>USD / INR</span><strong>83.62</strong><em className="negative">−0.12%</em></div><div className="ribbon-meta"><Clock3 size={13} /> Simulated market observations · delayed 15 min</div></div><div className="overview-grid"><Panel className="lens-panel"><PanelHeading title="Choose your lens" eyebrow="01 / CONTEXT" action={<span className="saved"><Check size={12} /> Saved locally</span>} /><div className="field-caption">Risk profile</div><div className="risk-pills">{(["Conservative", "Moderate", "Aggressive"] as Risk[]).map(r => <button key={r} className={risk === r ? "selected" : ""} onClick={() => window.dispatchEvent(new CustomEvent("set-risk", { detail: r }))} data-testid={`button-risk-${r.toLowerCase()}`}><span>{r === "Conservative" ? "C" : r === "Moderate" ? "M" : "A"}</span>{r}</button>)}</div><div className="field-caption instrument-caption">Instrument <span>Watchlist · NSE</span></div><div className="instrument-picker">{stocks.slice(0, 5).map(stock => <button key={stock.symbol} className={selected.symbol === stock.symbol ? "selected" : ""} onClick={() => setSelectedSymbol(stock.symbol)} data-testid={`button-select-${stock.symbol}`}><span className="ticker">{stock.symbol.slice(0, 2)}</span><span><strong>{stock.symbol}</strong><small>{stock.name}</small></span><em className={stock.move >= 0 ? "positive" : "negative"}>{stock.move >= 0 ? "+" : ""}{stock.move.toFixed(2)}%</em></button>)}</div><button className="link-button" onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "watchlist" }))} data-testid="button-view-watchlist"><Star size={14} /> Manage watchlist <span>→</span></button><div className="portfolio-peek"><div><span>Portfolio value</span><strong>₹8,42,600</strong><small>4 positions · local ledger</small></div><div><span>Today</span><strong className="positive">+₹6,842</strong><small className="positive">+0.82%</small></div></div></Panel><Panel className="agents-panel"><PanelHeading title="Parallel agent room" eyebrow="02 / EVIDENCE" action={<span className="mono">DEMO RUN SF-2408</span>} /><div className="selected-bar"><span className="ticker dark">{selected.symbol.slice(0, 2)}</span><span><small>Selected instrument</small><strong>{selected.symbol} <i>{selected.name}</i></strong></span><span className="selected-price">{formatINR(selected.price)}<small className={selected.move >= 0 ? "positive" : "negative"}>{selected.move >= 0 ? "+" : ""}{selected.move.toFixed(2)}%</small></span></div><div className="agent-stack">{(["technical", "fundamental", "sentiment"] as AgentKey[]).map(key => <AgentCard key={key} agent={key} state={agentStates[key]} onRetry={() => onRetry(key)} />)}</div><div className="parallel-note"><Zap size={13} /> Independent runs · deterministic local demo · no API keys</div></Panel><SignalCard risk={risk} selected={selected} analysisRunning={analysisRunning} onRun={onRun} /></div><div className="overview-lower"><Panel><PanelHeading title="Market pulse" eyebrow="OBSERVATION" action={<button className="inline-button" onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "market" }))} data-testid="button-open-market">Open market view →</button>} /><div className="pulse-grid"><div><span>Selected price</span><strong data-testid="text-selected-price">{formatINR(selected.price)}</strong><em className={selected.move >= 0 ? "positive" : "negative"}>{selected.move >= 0 ? "+" : ""}{selected.move.toFixed(2)}% today</em></div><div><span>Volume</span><strong>{selected.volume}</strong><em className="muted">1.14x 20D average</em></div><div><span>RSI (14)</span><strong>58.6</strong><em className="positive">Neutral-positive</em></div><div><span>Market status</span><StatusBadge tone="positive">{selected.status} · simulated</StatusBadge><em className="muted">09:40:48 IST</em></div></div></Panel><Panel className="quick-risk"><PanelHeading title="Risk context" eyebrow="PERSONALIZATION" /><div className="risk-meter"><div><span>Portfolio concentration</span><strong>42.8%</strong></div><div className="meter"><i style={{ width: "43%" }}></i></div><small>Financials are above your 35% comfort band.</small></div><button className="link-button" onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "risk" }))} data-testid="button-open-risk-lab"><ShieldCheck size={14} /> Tune in Risk Lab <span>→</span></button></Panel></div></div>;
 }
 
-function RiskSelector({ risk, setRisk }: { risk: Risk; setRisk: (risk: Risk) => void }) {
-  const choices: { id: Risk; desc: string; weight: string }[] = [
-    { id: "Conservative", desc: "Protect downside first", weight: "Capital 60%" },
-    { id: "Balanced", desc: "Evidence over urgency", weight: "Signal 50%" },
-    { id: "Growth", desc: "Accept measured volatility", weight: "Momentum 45%" },
-  ];
-  return <div className="risk-selector" data-testid="control-risk-stance">{choices.map((choice) => <button key={choice.id} className={`risk-choice ${risk === choice.id ? "active" : ""}`} onClick={() => setRisk(choice.id)} data-testid={`button-risk-${choice.id.toLowerCase()}`}><span className="risk-radio">{risk === choice.id && <i></i>}</span><span><strong>{choice.id}</strong><small>{choice.desc}</small></span><em>{choice.weight}</em></button>)}</div>;
+function Chart({ negative = false }: { negative?: boolean }) { return <div className="chart-wrap"><div className="chart-y"><span>1,820</span><span>1,780</span><span>1,740</span><span>1,700</span></div><svg viewBox="0 0 680 220" preserveAspectRatio="none" data-testid="chart-interactive-price"><defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={negative ? "#ef7b79" : "#57c9a4"} stopOpacity=".22" /><stop offset="1" stopColor={negative ? "#ef7b79" : "#57c9a4"} stopOpacity="0" /></linearGradient></defs><path d="M0,172 C45,166 55,130 94,142 S139,112 172,132 S212,91 246,108 S283,64 322,82 S370,96 402,65 S447,90 480,48 S518,70 550,30 S601,58 680,17 L680,220 L0,220 Z" fill="url(#chartFill)" /><path d="M0,172 C45,166 55,130 94,142 S139,112 172,132 S212,91 246,108 S283,64 322,82 S370,96 402,65 S447,90 480,48 S518,70 550,30 S601,58 680,17" fill="none" stroke={negative ? "#ef7b79" : "#57c9a4"} strokeWidth="3" vectorEffect="non-scaling-stroke" /><line x1="0" y1="150" x2="680" y2="150" stroke="#7084a4" strokeDasharray="5 7" opacity=".45" /></svg><div className="chart-x"><span>09:15</span><span>10:30</span><span>12:00</span><span>14:30</span><span>15:30</span></div></div>; }
+
+function MarketPage({ stocks, selectedSymbol, setSelectedSymbol }: { stocks: Stock[]; selectedSymbol: string; setSelectedSymbol: (s: string) => void }) {
+  const selected = stocks.find(s => s.symbol === selectedSymbol) ?? stocks[0]; const [range, setRange] = useState("1D"); const [indicator, setIndicator] = useState("Price");
+  return <div className="page-enter"><PageHeader eyebrow="Market intelligence · 02" title="Market" description="Explore simulated price action, volume and derived indicators before asking the agents to explain it." action={<span className="simulated-tag">SIMULATED · 09:40:48 IST</span>} /><div className="market-layout"><Panel className="market-list-panel"><PanelHeading title="Instruments" eyebrow="NSE UNIVERSE" action={<span className="mono">7 tracked</span>} /><div className="table-head market-head"><span>Symbol</span><span>Last</span><span>Move</span></div>{stocks.map(stock => <button key={stock.symbol} className={`market-row ${stock.symbol === selected.symbol ? "selected" : ""}`} onClick={() => setSelectedSymbol(stock.symbol)} data-testid={`button-market-stock-${stock.symbol}`}><span><b className="ticker">{stock.symbol.slice(0, 2)}</b><strong>{stock.symbol}</strong><small>{stock.sector}</small></span><strong>{formatINR(stock.price)}</strong><em className={stock.move >= 0 ? "positive" : "negative"}>{stock.move >= 0 ? "+" : ""}{stock.move.toFixed(2)}%</em></button>)}</Panel><Panel className="chart-panel"><div className="chart-top"><div><span className="micro-label">SIMULATED PRICE / VOLUME</span><h2>{selected.symbol} <small>{selected.name} · {selected.exchange}</small></h2><div className="quote-line"><strong>{formatINR(selected.price)}</strong><span className={selected.move >= 0 ? "positive" : "negative"}>{selected.move >= 0 ? "+" : ""}{selected.move.toFixed(2)}% today</span><StatusBadge tone={selected.status === "Open" ? "positive" : "caution"}>{selected.status}</StatusBadge></div></div><button className="watch-action" onClick={() => window.dispatchEvent(new CustomEvent("toggle-watch", { detail: selected.symbol }))} data-testid="button-toggle-market-watch"><Star size={15} fill={selected.watch ? "currentColor" : "none"} /> {selected.watch ? "Watching" : "Watch"}</button></div><div className="chart-toolbar"><div>{["1D", "1W", "1M", "3M", "1Y"].map(item => <button key={item} className={range === item ? "active" : ""} onClick={() => setRange(item)} data-testid={`button-range-${item.toLowerCase()}`}>{item}</button>)}</div><div>{["Price", "Volume", "RSI", "MA 20"].map(item => <button key={item} className={indicator === item ? "active" : ""} onClick={() => setIndicator(item)} data-testid={`button-indicator-${item.toLowerCase().replace(" ", "-")}`}>{item}</button>)}</div></div>{indicator === "Volume" ? <div className="large-volume"><MiniChart volume /><span>Volume · {selected.volume} latest</span></div> : <Chart negative={selected.move < 0} />}<div className="indicator-grid"><div><span>RSI (14)</span><strong>58.6</strong><em className="positive">Neutral-positive</em></div><div><span>MA 20</span><strong>₹1,716.40</strong><em className="positive">Price above</em></div><div><span>Momentum</span><strong>+0.42</strong><em>7 sessions</em></div><div><span>Volume</span><strong>{selected.volume}</strong><em>1.14x avg</em></div></div><div className="chart-note"><Clock3 size={13} /> Derived indicators are deterministic estimates from the simulated observation set. This is not live market data.</div></Panel></div></div>;
 }
 
-function Cockpit({ stocks, setStocks, risk, setRisk }: { stocks: Stock[]; setStocks: (stocks: Stock[]) => void; risk: Risk; setRisk: (risk: Risk) => void }) {
-  const [selected, setSelected] = useState("HDFCBANK");
-  const [query, setQuery] = useState("");
-  const [analysisState, setAnalysisState] = useState<"idle" | "running" | "complete">("idle");
-  const [agentStates, setAgentStates] = useState<Record<string, AgentState>>({ technical: "complete", fundamental: "complete", sentiment: "degraded" });
-  const [traceOpen, setTraceOpen] = useState(true);
-  const [toast, setToast] = useState("");
-  const selectedStock = stocks.find((stock) => stock.symbol === selected) ?? stocks[0];
-  const filteredStocks = stocks.filter((stock) => `${stock.symbol} ${stock.name}`.toLowerCase().includes(query.toLowerCase()));
-  const scores = { technical: "+0.71", fundamental: "+0.54", sentiment: "-0.18" };
-  const isRunning = analysisState === "running";
-  const runAnalysis = () => {
-    setAnalysisState("running");
-    setAgentStates({ technical: "running", fundamental: "running", sentiment: "running" });
-    setToast("Analysis run started · 3 agents are working in parallel");
-    window.setTimeout(() => { setAgentStates({ technical: "complete", fundamental: "complete", sentiment: "degraded" }); setAnalysisState("complete"); setToast("Analysis complete · conflicting sentiment safely disclosed"); }, 1600);
-  };
-  const retrySentiment = () => { setAgentStates((current) => ({ ...current, sentiment: "running" })); setToast("Refreshing sentiment sources…"); window.setTimeout(() => { setAgentStates((current) => ({ ...current, sentiment: "degraded" })); setToast("One source remains delayed · fallback evidence retained"); }, 1100); };
-  useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 2800); return () => window.clearTimeout(timer); }, [toast]);
-  const finalLabel = risk === "Growth" ? "WATCH / BUILD" : "HOLD / OBSERVE";
-  return (
-    <div className="page-enter">
-      <SectionHeading eyebrow="Decision workspace · 01" title="Analysis cockpit" description="Turn a market question into an auditable signal in under 60 seconds." action={<button className="quiet-button" onClick={() => setToast("A clean local session has been prepared")} data-testid="button-new-session"><Plus size={16} /> New session</button>} />
-      <div className="market-strip" data-testid="status-market-session"><div><span className="strip-label">NIFTY 50</span><strong>22,957.10</strong><span className="positive">+0.78%</span></div><div><span className="strip-label">SENSEX</span><strong>75,901.41</strong><span className="positive">+0.65%</span></div><div><span className="strip-label">USD / INR</span><strong>83.62</strong><span className="negative">−0.12%</span></div><div className="market-strip-note"><Clock3 size={14} /> Data as of 09:40:48 IST · delayed by 15 min</div></div>
-      <div className="cockpit-grid">
-        <section className="panel setup-panel">
-          <div className="panel-title"><div><span className="step-index">01</span><h2>Set your lens</h2></div><span className="saved-label"><Check size={13} /> Saved locally</span></div>
-          <div className="field-label">Risk stance <button className="help-dot" data-testid="button-risk-help" aria-label="Risk stance help"><Info size={12} /></button></div>
-          <RiskSelector risk={risk} setRisk={setRisk} />
-          <div className="field-label stock-field-label">Choose an instrument <span className="field-hint">Watchlist · NSE</span></div>
-          <div className="stock-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search symbol or company" data-testid="input-stock-search" /></div>
-          <div className="stock-list">{filteredStocks.map((stock) => <StockRow key={stock.symbol} stock={stock} selected={selected === stock.symbol} onSelect={() => { setSelected(stock.symbol); setToast(`${stock.symbol} selected for analysis`); }} onToggleWatch={() => { setStocks(stocks.map((item) => item.symbol === stock.symbol ? { ...item, watch: !item.watch } : item)); setToast(`${stock.symbol} ${stock.watch ? "removed from" : "added to"} watchlist`); }} />)}</div>
-          <button className="add-watchlist" onClick={() => setToast("Watchlist editor is available in your local session")} data-testid="button-add-watchlist"><Plus size={14} /> Add symbol to watchlist</button>
-          <div className="portfolio-snapshot" data-testid="card-portfolio-snapshot"><div><span>Portfolio pulse</span><strong>₹8,42,600</strong><small>4 positions · invested view</small></div><div className="portfolio-return"><span>Today</span><strong>+₹6,842</strong><small>+0.82%</small></div></div>
-        </section>
-        <section className="panel run-panel">
-          <div className="panel-title"><div><span className="step-index">02</span><h2>Run the forge</h2></div><span className="mono session-id">SF-2408-019</span></div>
-          <div className="selected-instrument"><div className="company-token">{selectedStock.symbol.slice(0, 2)}</div><div><span>Selected instrument</span><strong>{selectedStock.symbol} <small>{selectedStock.name}</small></strong></div><span className="selected-price">{selectedStock.price}<small className={selectedStock.tone}>{selectedStock.move}</small></span></div>
-          <div className="agent-stack">{agentMeta.map((agent) => <AgentCard key={agent.id} agent={agent} state={agentStates[agent.id]} score={scores[agent.id as keyof typeof scores]} onRetry={retrySentiment} />)}</div>
-          <button className={`run-button ${isRunning ? "is-running" : ""}`} onClick={runAnalysis} disabled={isRunning} data-testid="button-run-analysis">{isRunning ? <><RefreshCw size={17} className="spin" /> Agents are comparing evidence…</> : <><Play size={16} fill="currentColor" /> {analysisState === "complete" ? "Run again" : "Run analysis"} <span className="run-shortcut">⌘ ↵</span></>}</button>
-          <div className="run-caption"><Zap size={13} /> Parallel run · local deterministic demo · no orders placed</div>
-        </section>
-        <section className="panel signal-panel">
-          <div className="panel-title"><div><span className="step-index">03</span><h2>Signal synthesis</h2></div><button className="icon-btn" onClick={() => setTraceOpen(!traceOpen)} data-testid="button-toggle-trace" aria-label="Toggle trace"><Eye size={16} /></button></div>
-          <div className="signal-hero" data-testid="status-final-signal"><div className="signal-kicker">Current signal <span className="cited-pill"><ShieldCheck size={12} /> risk-aware</span></div><div className="signal-word">{isRunning ? "WORKING" : finalLabel.split(" / ")[0]}</div><div className="signal-sub">{isRunning ? "Waiting for all agent outputs" : "Evidence is mixed; patience has the edge."}</div><div className="confidence-row"><span>Confidence</span><strong>{isRunning ? "—" : "63"}<small>/100</small></strong></div><div className="confidence-bar"><span style={{ width: isRunning ? "18%" : "63%" }}></span></div></div>
-          <div className="weight-row"><span>Risk stance weighting</span><strong>{risk}</strong></div><div className="weight-bars"><div><span>Technical</span><i><b style={{ width: risk === "Growth" ? "42%" : "34%" }}></b></i><em>{risk === "Growth" ? "42%" : "34%"}</em></div><div><span>Fundamental</span><i><b className="teal-bar" style={{ width: risk === "Conservative" ? "42%" : "50%" }}></b></i><em>{risk === "Conservative" ? "42%" : "50%"}</em></div><div><span>Sentiment</span><i><b className="rose-bar" style={{ width: "16%" }}></b></i><em>16%</em></div></div>
-          <div className="reasoning-box"><div className="box-label"><BrainCircuit size={14} /> Why this signal</div><p>Price structure remains constructive, while the latest narrative is noisy. Fundamentals support staying engaged, but the sentiment gap lowers conviction.</p><button className="inline-link" onClick={() => setTraceOpen(true)} data-testid="button-open-reasoning">View reasoning trace <ArrowRight size={14} /></button></div>
-          <div className="safety-note"><ShieldCheck size={15} /><span><strong>Safe by design</strong> This is an explainable research output, not financial advice.</span></div>
-        </section>
-      </div>
-      <div className={`lower-grid ${traceOpen ? "" : "trace-collapsed"}`}>
-        <section className="panel trace-panel">
-          <div className="panel-title"><div><span className="step-index">04</span><h2>Evidence trace</h2></div><span className="mono">12.8s total</span></div>
-          <div className="trace-list">{traceSteps.map((step, index) => { const Icon = step.icon; return <div className={`trace-item ${step.tone}`} key={step.title}><div className="trace-rail"><span className="trace-node"><Icon size={13} /></span>{index < traceSteps.length - 1 && <i></i>}</div><div className="trace-copy"><div><strong>{step.title}</strong><time>{step.time}</time></div><p>{step.text}</p></div></div>; })}</div>
-          <button className="trace-footer" onClick={() => setToast("Full trace export prepared locally")} data-testid="button-export-trace"><Download size={14} /> Export trace <span className="mono">JSON</span></button>
-        </section>
-        <section className="panel sources-panel">
-          <div className="panel-title"><div><span className="step-index">05</span><h2>Source ledger</h2></div><span className="source-count">8 cited</span></div>
-          <div className="source-list"><div className="source-row"><span className="source-favicon">N</span><div><strong>NSE India</strong><small>Price & volume · 09:40 IST</small></div><span className="source-ok"><Check size={12} /> fresh</span></div><div className="source-row"><span className="source-favicon filing">F</span><div><strong>HDFC Bank · Q4 filing</strong><small>Fundamentals · 28 Apr 2024</small></div><span className="source-ok"><Check size={12} /> cited</span></div><div className="source-row"><span className="source-favicon press">P</span><div><strong>Reuters India</strong><small>Sentiment · 07 May 2024</small></div><span className="source-delay"><Clock3 size={12} /> delayed</span></div></div>
-          <button className="source-footer" onClick={() => setToast("Source ledger is already pinned to this session")} data-testid="button-view-all-sources">View all sources <ArrowRight size={14} /></button>
-        </section>
-      </div>
-      {toast && <div className="toast-message" role="status" data-testid="status-toast"><Check size={14} />{toast}</div>}
-    </div>
-  );
+function AnalysisPage({ stocks, selectedSymbol, setSelectedSymbol, risk, analysisRunning, agentStates, onRun, onRetry }: { stocks: Stock[]; selectedSymbol: string; setSelectedSymbol: (s: string) => void; risk: Risk; analysisRunning: boolean; agentStates: Record<AgentKey, AgentState>; onRun: () => void; onRetry: (key: AgentKey) => void }) {
+  const selected = stocks.find(s => s.symbol === selectedSymbol) ?? stocks[0];
+  return <div className="page-enter"><PageHeader eyebrow="Multi-agent reasoning · 03" title="AI Analysis" description="Three independent perspectives, then a transparent synthesis that changes interpretation—not the underlying market signal." action={<button className="primary-button" onClick={onRun} disabled={analysisRunning} data-testid="button-analysis-run-top"><Play size={15} /> {analysisRunning ? "Running..." : "Run analysis"}</button>} /><div className="analysis-context"><div><span>Instrument</span><select value={selected.symbol} onChange={e => setSelectedSymbol(e.target.value)} data-testid="select-analysis-instrument">{stocks.map(stock => <option value={stock.symbol} key={stock.symbol}>{stock.symbol} · {stock.name}</option>)}</select></div><div><span>Risk profile</span><strong>{risk}</strong></div><div><span>Portfolio exposure</span><strong>42.8% financials</strong></div><div><span>Run timestamp</span><strong className="mono">{nowLabel()} IST</strong></div></div><div className="analysis-grid"><Panel className="analysis-agents"><PanelHeading title="Independent agent outputs" eyebrow="PARALLEL EXECUTION" /><div className="agent-stack">{(["technical", "fundamental", "sentiment"] as AgentKey[]).map(key => <div key={key}><AgentCard agent={key} state={agentStates[key]} onRetry={() => onRetry(key)} />{agentStates[key] === "complete" && <div className="structured-output"><span>Structured output</span><p>{key === "technical" ? "Higher lows persist above the 20-day average; momentum is constructive but not extended." : key === "fundamental" ? "Stable credit quality and earnings growth support a durable base; valuation is no longer a clear discount." : "News polarity is mildly negative around rates, with no confirmed thesis break."}</p><div><b>Confidence</b><strong>{key === "sentiment" ? "48%" : "76%"}</strong></div></div>}</div>)}</div><div className="conflict-alert"><AlertTriangle size={16} /><div><strong>Conflict disclosed</strong><p>Technical and fundamental signals lean constructive while sentiment is negative. Synthesis lowers confidence and preserves both views.</p></div></div></Panel><div className="analysis-side"><SignalCard risk={risk} selected={selected} analysisRunning={analysisRunning} onRun={onRun} /><Panel className="trace-card"><PanelHeading title="Synthesis trace" eyebrow="AUDIT LOG" /><div className="trace-list">{["Universe filtered · NSE large-cap watchlist", "Signals normalized · −1 to +1 scale", `Risk stance applied · ${risk} weights`, "Conflict detected · sentiment divergence", "Output safety check · no execution path"].map((step, i) => <div className="trace-row" key={step}><span>{String(i + 1).padStart(2, "0")}</span><div><strong>{step}</strong><small>{i === 0 ? "09:41:07" : `09:41:${String(8 + i).padStart(2, "0")}`} IST</small></div></div>)}</div></Panel></div></div></div>;
 }
 
-function ActivityPage() {
-  const [notice, setNotice] = useState("");
-  const [range, setRange] = useState("Last 30 days");
-  const rows = [
-    { symbol: "INFY", signal: "ACCUMULATE", confidence: "71", outcome: "+4.8%", date: "08 May · 09:12", tone: "positive" },
-    { symbol: "HDFCBANK", signal: "HOLD / OBSERVE", confidence: "63", outcome: "Open", date: "07 May · 14:38", tone: "neutral" },
-    { symbol: "TCS", signal: "WATCH / BUILD", confidence: "58", outcome: "+1.2%", date: "06 May · 10:03", tone: "positive" },
-    { symbol: "RELIANCE", signal: "REDUCE", confidence: "76", outcome: "−2.1%", date: "03 May · 11:46", tone: "negative" },
-  ];
-  useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(""), 2200);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-  return <div className="page-enter"><SectionHeading eyebrow="Decision workspace · 02" title="Activity & performance" description="A sober record of what the desk saw, said, and learned." action={<button className="quiet-button" onClick={() => setNotice("Performance snapshot exported to this local session")} data-testid="button-export-performance"><Download size={15} /> Export session</button>} /><div className="metrics-grid"><div className="metric-card"><span>Runs this week</span><strong>24</strong><small className="positive">+6 vs last week</small><Sparkline tone="teal" /></div><div className="metric-card"><span>Average confidence</span><strong>68.4<small>/100</small></strong><small className="positive">+3.2 pts</small><Sparkline tone="orange" /></div><div className="metric-card"><span>Evidence conflicts</span><strong>17<small>%</small></strong><small className="neutral-copy">4 flagged for review</small><Sparkline tone="rose" /></div><div className="metric-card"><span>Source freshness</span><strong>91<small>%</small></strong><small className="positive">Within target</small><Sparkline tone="teal" /></div></div><div className="activity-grid"><section className="panel history-panel"><div className="panel-title"><div><span className="step-index">LOG</span><h2>Signal history</h2></div><button className="filter-button" onClick={() => setRange(range === "Last 30 days" ? "Last 7 days" : "Last 30 days")} data-testid="button-filter-history"><ListFilter size={14} /> {range} <ChevronDown size={13} /></button></div><div className="history-table"><div className="table-head"><span>Instrument</span><span>Signal</span><span>Confidence</span><span>Observed outcome</span><span>Timestamp</span></div>{rows.map((row) => <div className="history-row" key={row.symbol}><div><span className="ticker-badge small">{row.symbol.slice(0, 2)}</span><strong>{row.symbol}</strong></div><span className={`signal-pill ${row.tone}`}>{row.signal}</span><span className="confidence-cell"><i><b style={{ width: `${row.confidence}%` }}></b></i>{row.confidence}</span><strong className={row.outcome.startsWith("−") ? "negative" : row.outcome === "Open" ? "neutral-copy" : "positive"}>{row.outcome}</strong><time>{row.date}</time></div>)}</div></section><section className="panel learning-panel"><div className="panel-title"><div><span className="step-index">NOTE</span><h2>Desk learning</h2></div><Sparkles size={16} className="orange-icon" /></div><div className="learning-highlight"><span>Pattern noticed</span><strong>Conflicting sentiment is more common after earnings</strong><p>4 of 6 recent conflicts appeared within 48 hours of a filing. Treat narrative shifts as lower-confidence until the next price session confirms.</p></div><div className="mini-stat-row"><div><small>Best aligned agent</small><strong>Fundamental</strong><span>76% directional match</span></div><div><small>Most reviewed</small><strong>Sentiment</strong><span>9 human checks</span></div></div><button className="inline-link" onClick={() => setNotice("Methodology notes are one click away in the navigation")} data-testid="button-open-methodology">Read methodology notes <ArrowRight size={14} /></button></section></div>{notice && <div className="toast-message" role="status" data-testid="status-activity-toast"><Check size={14} />{notice}</div>}</div>;
+function PortfolioPage({ holdings, setHoldings, stocks }: { holdings: Holding[]; setHoldings: (h: Holding[]) => void; stocks: Stock[] }) {
+  const [editing, setEditing] = useState<string | null>(null); const [form, setForm] = useState({ symbol: "HDFCBANK", quantity: "10", average: "1700" }); const [notice, setNotice] = useState("");
+  const enriched = holdings.map(h => ({ ...h, stock: stocks.find(s => s.symbol === h.symbol) ?? stocks[0], value: h.quantity * (stocks.find(s => s.symbol === h.symbol)?.price ?? h.average), gain: h.quantity * ((stocks.find(s => s.symbol === h.symbol)?.price ?? h.average) - h.average) }));
+  const total = enriched.reduce((sum, h) => sum + h.value, 0); const invested = enriched.reduce((sum, h) => sum + h.quantity * h.average, 0); const save = () => { const qty = Number(form.quantity); const avg = Number(form.average); if (!form.symbol || qty <= 0 || avg <= 0) return; setHoldings([...holdings.filter(h => h.symbol !== form.symbol), { symbol: form.symbol, quantity: qty, average: avg }]); setEditing(null); setNotice("Position saved to local portfolio ledger"); };
+  return <div className="page-enter"><PageHeader eyebrow="Personal ledger · 04" title="Portfolio" description="Edit your local holdings and see how concentration changes the personalized interpretation." action={<button className="primary-button" onClick={() => { setEditing("new"); setForm({ symbol: stocks[0].symbol, quantity: "10", average: String(stocks[0].price) }); }} data-testid="button-add-position"><Plus size={15} /> Add position</button>} /><div className="portfolio-kpis"><div><span>Total value</span><strong data-testid="text-portfolio-value">{formatINR(total)}</strong><em className="positive">+₹6,842 today</em></div><div><span>Invested cost</span><strong>{formatINR(invested)}</strong><em className="muted">Local ledger</em></div><div><span>Total gain / loss</span><strong className={total - invested >= 0 ? "positive" : "negative"}>{formatINR(total - invested)}</strong><em className="positive">+8.4% since entry</em></div><div><span>Concentration risk</span><strong className="caution">Elevated</strong><em className="muted">42.8% financials</em></div></div><div className="portfolio-grid"><Panel><PanelHeading title="Positions" eyebrow="HOLDINGS" action={<span className="simulated-tag">CURRENT PRICES SIMULATED</span>} /><div className="holding-table"><div className="table-head"><span>Asset</span><span>Qty</span><span>Avg. cost</span><span>Current value</span><span>Gain / loss</span><span></span></div>{enriched.map(h => <div className="holding-row" key={h.symbol} data-testid={`row-holding-${h.symbol}`}><span><b className="ticker">{h.symbol.slice(0, 2)}</b><strong>{h.symbol}</strong><small>{h.stock.sector}</small></span><strong>{h.quantity}</strong><span>{formatINR(h.average)}</span><strong>{formatINR(h.value)}</strong><span className={h.gain >= 0 ? "positive" : "negative"}>{h.gain >= 0 ? "+" : ""}{formatINR(h.gain)}</span><div><button className="row-action" onClick={() => { setEditing(h.symbol); setForm({ symbol: h.symbol, quantity: String(h.quantity), average: String(h.average) }); }} data-testid={`button-edit-${h.symbol}`}>Edit</button><button className="row-action danger" onClick={() => { setHoldings(holdings.filter(item => item.symbol !== h.symbol)); setNotice(`${h.symbol} removed from portfolio`); }} data-testid={`button-delete-${h.symbol}`}>Remove</button></div></div>)}</div>{editing && <div className="edit-drawer"><div className="drawer-head"><strong>{editing === "new" ? "Add position" : "Edit position"}</strong><button className="icon-button" onClick={() => setEditing(null)} data-testid="button-close-position-form"><X size={16} /></button></div><label>Stock<select value={form.symbol} onChange={e => setForm({ ...form, symbol: e.target.value })} data-testid="select-position-stock">{stocks.map(s => <option key={s.symbol}>{s.symbol}</option>)}</select></label><label>Quantity<input type="number" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} data-testid="input-position-quantity" /></label><label>Average purchase price<input type="number" value={form.average} onChange={e => setForm({ ...form, average: e.target.value })} data-testid="input-position-average" /></label><button className="primary-button full" onClick={save} data-testid="button-save-position"><Check size={15} /> Save locally</button></div>}</Panel><Panel className="allocation-panel"><PanelHeading title="Allocation" eyebrow="EXPOSURE" /><div className="donut" data-testid="chart-portfolio-allocation"><div><strong>₹8.42L</strong><span>portfolio value</span></div></div><div className="legend">{[{ label: "Financials", value: "42.8%", color: "blue" }, { label: "Technology", value: "27.4%", color: "purple" }, { label: "Energy", value: "18.9%", color: "amber" }, { label: "Consumer", value: "10.9%", color: "green" }].map(item => <div key={item.label}><i className={item.color}></i><span>{item.label}</span><strong>{item.value}</strong></div>)}</div><div className="sector-alert"><AlertTriangle size={14} /><span>Financials exceed the 35% concentration comfort band.</span></div></Panel></div>{notice && <div className="toast">{notice}</div>}</div>;
 }
 
-function MethodologyPage() {
-  const [open, setOpen] = useState("orchestration");
-  const items = [
-    { id: "orchestration", n: "01", title: "Orchestration layer", text: "The desk receives a symbol, a risk stance, and a timestamped market context. It fans the question out to independent agents so one narrative cannot dominate the first pass." },
-    { id: "agents", n: "02", title: "Three evidence agents", text: "Technical reads price structure and momentum. Fundamental + RAG grounds ratios and filings. Sentiment classifies recent narrative with source freshness attached." },
-    { id: "risk", n: "03", title: "Risk-aware weighting", text: "Your stance changes the weighting, not the facts. Conservative profiles reward durable evidence; Growth profiles tolerate more momentum. We always show the math." },
-    { id: "synthesis", n: "04", title: "Synthesis & safety rail", text: "The synthesis agent writes a plain-language conclusion, reduces confidence when signals conflict, and never turns a research output into a trade instruction." },
-  ];
-  return <div className="page-enter"><SectionHeading eyebrow="Decision workspace · 03" title="Architecture & method" description="A visible reasoning chain for people who want to know what sits beneath a signal." action={<button className="quiet-button" onClick={() => setOpen("orchestration")} data-testid="button-reset-method"><RefreshCw size={15} /> Reset view</button>} /><div className="architecture-layout"><section className="panel architecture-panel"><div className="architecture-map"><div className="map-node input-node"><UserRound size={18} /><strong>Investor lens</strong><small>Profile + risk stance</small></div><div className="map-line"><span></span><span></span><span></span></div><div className="map-node central-node"><BrainCircuit size={21} /><strong>SignalForge</strong><small>Orchestrate · normalize</small></div><div className="map-line"><span></span><span></span><span></span></div><div className="map-agents"><div><LineChart size={15} /><span>Technical</span></div><div><Database size={15} /><span>Fundamental</span></div><div><Radar size={15} /><span>Sentiment</span></div></div><div className="map-line vertical"><span></span><span></span></div><div className="map-node output-node"><Target size={18} /><strong>Explainable signal</strong><small>Confidence · caveats · sources</small></div></div><div className="architecture-foot"><span><span className="live-dot"></span> Deterministic local demo</span><span className="mono">inputs → evidence → decision</span></div></section><section className="panel method-list-panel"><div className="panel-title"><div><span className="step-index">READ</span><h2>How it reasons</h2></div><BookOpen size={16} className="teal-icon" /></div><div className="method-list">{items.map((item) => <button key={item.id} className={`method-item ${open === item.id ? "open" : ""}`} onClick={() => setOpen(open === item.id ? "" : item.id)} data-testid={`button-method-${item.id}`}><div className="method-title"><span>{item.n}</span><strong>{item.title}</strong><ChevronDown size={15} /></div>{open === item.id && <p>{item.text}</p>}</button>)}</div></section></div><div className="method-callout"><ShieldCheck size={17} /><div><strong>Built for informed curiosity</strong><p>SignalForge is a research interface and educational demo. It does not know your circumstances, it cannot predict markets, and it should not be used as financial advice.</p></div><button className="inline-link" onClick={() => setOpen("synthesis")} data-testid="button-view-safety"><ArrowRight size={14} /></button></div></div>;
+function WatchlistPage({ stocks, setStocks, onSelect }: { stocks: Stock[]; setStocks: (s: Stock[]) => void; onSelect: (s: string) => void }) {
+  const [query, setQuery] = useState(""); const [notice, setNotice] = useState(""); const watched = stocks.filter(s => s.watch); const available = stocks.filter(s => !s.watch && `${s.symbol} ${s.name}`.toLowerCase().includes(query.toLowerCase())); const toggle = (symbol: string) => { const stock = stocks.find(s => s.symbol === symbol); setStocks(stocks.map(s => s.symbol === symbol ? { ...s, watch: !s.watch } : s)); setNotice(`${symbol} ${stock?.watch ? "removed from" : "added to"} watchlist`); };
+  return <div className="page-enter"><PageHeader eyebrow="Saved context · 05" title="Watchlist" description="Keep a focused universe close. Open an instrument to inspect its market context and analysis." action={<span className="count-pill">{watched.length} symbols · NSE</span>} /><Panel className="watchlist-panel"><div className="watchlist-head"><div><span className="micro-label">CORE WATCHLIST</span><h2>Saved instruments</h2></div><div className="search-field"><Search size={15} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Add symbol or company" data-testid="input-watchlist-search" /></div></div><div className="watch-grid">{watched.map(stock => <div className="watch-card" key={stock.symbol} data-testid={`card-watchlist-${stock.symbol}`}><button className="watch-open" onClick={() => onSelect(stock.symbol)} data-testid={`button-open-watch-${stock.symbol}`}><span className="ticker">{stock.symbol.slice(0, 2)}</span><span><strong>{stock.symbol}</strong><small>{stock.name}</small></span></button><div className="watch-quote"><strong>{formatINR(stock.price)}</strong><span className={stock.move >= 0 ? "positive" : "negative"}>{stock.move >= 0 ? "+" : ""}{stock.move.toFixed(2)}%</span></div><MiniChart tone={stock.move < 0 ? "negative" : "positive"} /><div className="watch-meta"><span>{stock.volume} volume</span><button className="icon-button" onClick={() => toggle(stock.symbol)} data-testid={`button-remove-watch-${stock.symbol}`} aria-label={`Remove ${stock.symbol}`}><Star size={15} fill="currentColor" /></button></div></div>)}</div>{available.length > 0 && <div className="watch-add-section"><span className="micro-label">ADD TO WATCHLIST</span>{available.map(stock => <button key={stock.symbol} onClick={() => toggle(stock.symbol)} data-testid={`button-add-watch-${stock.symbol}`}><Plus size={14} /><strong>{stock.symbol}</strong><span>{stock.name}</span></button>)}</div>}{watched.length === 0 && <div className="empty-state"><Star size={22} /><strong>Your watchlist is clear</strong><span>Search above to add an instrument to your local context.</span></div>}</Panel>{notice && <div className="toast">{notice}</div>}</div>;
+}
+
+function NewsPage() {
+  const [filter, setFilter] = useState<"all" | Tone>("all");
+  const news = [{ tone: "positive" as Tone, score: 0.68, topic: "Banking", title: "Private lenders hold steady as deposit growth normalizes", source: "Reuters India", time: "18 min ago" }, { tone: "neutral" as Tone, score: 0.04, topic: "Rates", title: "Markets parse the next policy window with patience", source: "Economic Times", time: "42 min ago" }, { tone: "negative" as Tone, score: -0.44, topic: "Macro", title: "Sticky inflation keeps rate-sensitive names in focus", source: "Mint", time: "1 hr ago" }, { tone: "positive" as Tone, score: 0.52, topic: "Technology", title: "IT exporters see resilient demand in enterprise pipeline", source: "Company IR", time: "2 hrs ago" }, { tone: "negative" as Tone, score: -0.22, topic: "Financials", title: "Analysts flag near-term margin pressure across lenders", source: "Market archive", time: "3 hrs ago" }];
+  const filtered = filter === "all" ? news : news.filter(n => n.tone === filter);
+  return <div className="page-enter"><PageHeader eyebrow="Narrative monitor · 06" title="News & Sentiment" description="A deliberately simulated news layer with polarity, topics and source freshness attached to every item." action={<span className="simulated-tag">ALL STORIES SIMULATED</span>} /><div className="sentiment-summary"><div><span>Composite sentiment</span><strong className="positive">+0.18</strong><small>mildly constructive</small></div><div className="sentiment-bars"><span style={{ width: "48%" }}></span><span style={{ width: "31%" }}></span><span style={{ width: "21%" }}></span></div><div className="sentiment-key"><span className="positive">Positive 48%</span><span className="neutral-copy">Neutral 31%</span><span className="negative">Negative 21%</span></div><div className="trend-mini"><MiniChart /><small>7-day tone trend</small></div></div><div className="news-layout"><Panel className="news-feed"><PanelHeading title="Narrative feed" eyebrow="SIMULATED NEWS" action={<div className="segmented">{(["all", "positive", "neutral", "negative"] as const).map(item => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)} data-testid={`button-news-filter-${item}`}>{item === "all" ? "All" : item}</button>)}</div>} /><div className="news-list">{filtered.map((item, i) => <article className="news-item" key={item.title} data-testid={`article-news-${i}`}><div className={`sentiment-marker ${item.tone}`}></div><div className="news-copy"><div><StatusBadge tone={item.tone}>{item.tone} · {item.score > 0 ? "+" : ""}{item.score.toFixed(2)}</StatusBadge><span className="topic">{item.topic}</span></div><h3>{item.title}</h3><footer><span>{item.source}</span><time>{item.time} · simulated</time></footer></div><button className="icon-button" onClick={() => window.alert("Story details are simulated in this local prototype.")} data-testid={`button-open-news-${i}`} aria-label="Open news item"><ChevronDown size={15} /></button></article>)}</div><div className="news-footer"><AlertTriangle size={14} /> News feed unavailable would reduce sentiment confidence; no stories are invented to fill gaps.</div></Panel><Panel className="topics-panel"><PanelHeading title="Topic pulse" eyebrow="7-DAY TREND" /><MiniChart tone="positive" /><div className="topic-list">{["Rates", "Banking", "Technology", "Macro"].map((topic, i) => <div key={topic}><span>{topic}</span><i><b style={{ width: `${[72, 61, 48, 34][i]}%` }}></b></i><strong className={i === 3 ? "negative" : "positive"}>{i === 3 ? "−0.18" : `+0.${68 - i * 9}`}</strong></div>)}</div><div className="source-freshness"><span>Source freshness</span><strong>78%</strong><div className="meter"><i style={{ width: "78%" }}></i></div><small>One provider is delayed; timestamp retained.</small></div></Panel></div></div>;
+}
+
+function EvidencePage() {
+  const [showMissing, setShowMissing] = useState(true); const [type, setType] = useState("All");
+  const visible = initialEvidence.filter(e => type === "All" || e.type === type).filter(e => showMissing || e.status !== "Missing");
+  return <div className="page-enter"><PageHeader eyebrow="Grounding layer · 07" title="Evidence / Research" description="A document evidence ledger that shows what was retrieved, why it matters, and where the system has gaps." action={<button className="secondary-button" onClick={() => setShowMissing(!showMissing)} data-testid="button-toggle-missing">{showMissing ? "Hide missing documents" : "Show missing documents"}</button>} /><div className="evidence-summary"><div><BookOpen size={17} /><span>Retrieved documents</span><strong>{showMissing ? "5" : "4"}</strong></div><div><Target size={17} /><span>Average relevance</span><strong>84%</strong></div><div><Clock3 size={17} /><span>Freshness</span><strong className="caution">78%</strong></div><div><ShieldCheck size={17} /><span>Grounding status</span><strong className="positive">Auditable</strong></div></div><Panel className="ledger-panel"><div className="ledger-toolbar"><div className="search-field"><Search size={15} /><input placeholder="Search evidence ledger" data-testid="input-search-evidence" /></div><div className="segmented">{["All", "Fundamental", "Sentiment", "Market", "Risk"].map(item => <button key={item} className={type === item ? "active" : ""} onClick={() => setType(item)} data-testid={`button-evidence-filter-${item.toLowerCase()}`}>{item}</button>)}</div></div><div className="ledger-list">{visible.map(item => <div className={`ledger-row ${item.status.toLowerCase()}`} key={item.id} data-testid={`row-evidence-${item.id}`}><div className="doc-icon"><FileSearch size={16} /></div><div className="ledger-main"><div><strong>{item.label}</strong><StatusBadge tone={item.status === "Cited" ? "positive" : item.status === "Delayed" ? "caution" : "negative"}>{item.status}</StatusBadge></div><p>“{item.excerpt}”</p><footer><span>{item.source}</span><span>{item.type}</span><time>{item.timestamp}</time></footer></div><div className="relevance"><span>Relevance</span><strong className={item.relevance < 50 ? "negative" : ""}>{item.relevance ? `${item.relevance}%` : "—"}</strong><i><b style={{ width: `${item.relevance}%` }}></b></i></div></div>)}</div>{visible.length === 0 && <div className="empty-state"><FileSearch size={22} /><strong>No evidence in this filter</strong><span>Broaden the ledger filter to inspect other simulated sources.</span></div>}<div className="ledger-note"><AlertTriangle size={14} /><span>Missing documents lower confidence. FinSight AI never fabricates an excerpt or source label.</span></div></Panel></div>;
+}
+
+function RiskPage({ risk, setRisk }: { risk: Risk; setRisk: (r: Risk) => void }) {
+  const [horizon, setHorizon] = useState("3–5 years"); const [exposure, setExposure] = useState(42); const [sector, setSector] = useState(35);
+  const interpretation = risk === "Conservative" ? "The HOLD signal becomes a wait-for-confirmation stance. Durable fundamentals matter more than momentum, and the 42% financials exposure is a meaningful constraint." : risk === "Moderate" ? "The HOLD signal stays balanced: retain attention, but wait for sentiment to confirm the constructive price structure." : "The same market signal becomes a measured build/watch interpretation. Momentum can carry more weight, while the sentiment conflict remains a hard caveat.";
+  return <div className="page-enter"><PageHeader eyebrow="Personalization controls · 08" title="Risk Lab" description="Change the lens, not the facts. Market signals remain unchanged while interpretation adapts to your constraints." action={<span className="signal-constant"><ShieldCheck size={14} /> Signal invariant: HOLD / OBSERVE</span>} /><div className="risk-lab-grid"><Panel className="risk-controls"><PanelHeading title="Your parameters" eyebrow="LOCAL PROFILE" /><div className="control-block"><span className="control-label">Risk profile</span><div className="risk-cards">{(["Conservative", "Moderate", "Aggressive"] as Risk[]).map(item => <button key={item} className={risk === item ? "active" : ""} onClick={() => setRisk(item)} data-testid={`button-risk-lab-${item.toLowerCase()}`}><strong>{item}</strong><small>{item === "Conservative" ? "Downside first" : item === "Moderate" ? "Evidence over urgency" : "Measured volatility"}</small></button>)}</div></div><div className="control-block"><label className="control-label" htmlFor="horizon">Investment horizon</label><select id="horizon" value={horizon} onChange={e => setHorizon(e.target.value)} data-testid="select-investment-horizon"><option>Under 1 year</option><option>1–3 years</option><option>3–5 years</option><option>5+ years</option></select></div><div className="control-block"><label className="control-label" htmlFor="exposure">Portfolio exposure <strong>{exposure}%</strong></label><input id="exposure" type="range" min="0" max="100" value={exposure} onChange={e => setExposure(Number(e.target.value))} data-testid="input-portfolio-exposure" /><div className="range-labels"><span>Low</span><span>Current exposure</span><span>High</span></div></div><div className="control-block"><label className="control-label" htmlFor="sector">Sector concentration comfort <strong>{sector}%</strong></label><input id="sector" type="range" min="10" max="70" value={sector} onChange={e => setSector(Number(e.target.value))} data-testid="input-sector-concentration" /><div className="range-labels"><span>10%</span><span>Comfort band</span><span>70%</span></div></div><button className="primary-button full" onClick={() => window.dispatchEvent(new CustomEvent("risk-saved"))} data-testid="button-save-risk"><Check size={15} /> Save profile locally</button></Panel><div className="risk-results"><Panel className="risk-interpretation"><PanelHeading title="Personalized interpretation" eyebrow="SYNTHESIS" /><div className="interpretation-signal"><span>Market signal stays</span><strong>HOLD / OBSERVE</strong><StatusBadge tone="positive">63/100 base confidence</StatusBadge></div><p>{interpretation}</p><div className="interpretation-grid"><div><span>Horizon</span><strong>{horizon}</strong></div><div><span>Exposure</span><strong>{exposure}%</strong></div><div><span>Concentration limit</span><strong>{sector}%</strong></div></div></Panel><Panel className="risk-checks"><PanelHeading title="Risk checks" eyebrow="GUARDRAILS" /><div className="check-row"><span><Check size={14} /> No execution path</span><small>Pass</small></div><div className="check-row"><span><AlertTriangle size={14} /> Financials concentration</span><small className="caution">Review</small></div><div className="check-row"><span><AlertTriangle size={14} /> Sentiment conflict</span><small className="caution">Confidence −7</small></div><div className="check-row"><span><Check size={14} /> Evidence ledger present</span><small>Pass</small></div></Panel></div></div></div>;
+}
+
+function Copilot({ open, onClose, selected, risk, tab }: { open: boolean; onClose: () => void; selected: Stock; risk: Risk; tab: Tab }) {
+  const [messages, setMessages] = useState<{ role: "assistant" | "user"; text: string }[]>([{ role: "assistant", text: `I’m FinSight Copilot. Ask about ${selected.symbol}, the current risk lens, or the evidence trail. I only use this local session’s simulated data.` }]); const [input, setInput] = useState("");
+  const ask = (question: string) => { const q = question.toLowerCase(); let answer = q.includes("risk") ? `Your ${risk} profile makes the current HOLD / OBSERVE signal ${risk === "Aggressive" ? "more open to a measured build/watch interpretation" : "more focused on confirmation and downside control"}. Source: Risk Lab parameters.` : q.includes("evidence") || q.includes("source") ? "The strongest retrieved item is the HDFC Bank Q4 FY24 filing at 94% relevance. One sector risk note is missing, so confidence is reduced rather than filled with invented evidence. Source: Evidence / Research." : q.includes("portfolio") ? "Your local ledger is ₹8,42,600 with 42.8% financials exposure. That concentration is above the 35% comfort band. Source: Portfolio allocation." : `For ${selected.symbol}, price structure is constructive (+${selected.move.toFixed(2)}% today) while sentiment is mildly negative. The synthesis remains HOLD / OBSERVE at 63/100 base confidence. Source: AI Analysis.`; setMessages(m => [...m, { role: "user", text: question }, { role: "assistant", text: answer }]); setInput(""); };
+  if (!open) return null;
+  return <aside className="copilot-panel" data-testid="panel-copilot"><div className="copilot-head"><div><span className="copilot-mark"><Bot size={16} /></span><span><strong>FinSight Copilot</strong><small>Grounded in current workspace · simulated</small></span></div><button className="icon-button" onClick={onClose} data-testid="button-close-copilot" aria-label="Close copilot"><X size={16} /></button></div><div className="copilot-context"><span>Context</span><strong>{selected.symbol} · {labelFor[tab]}</strong><span className="status-dot"></span></div><div className="suggestions">{["Why HOLD / OBSERVE?", "What evidence is strongest?", "How does my risk profile change this?", "Check portfolio concentration"].map(q => <button key={q} onClick={() => ask(q)} data-testid={`button-copilot-suggestion-${q.slice(0, 5).replaceAll(" ", "-").toLowerCase()}`}>{q}</button>)}</div><div className="chat-messages">{messages.map((message, i) => <div className={`chat-message ${message.role}`} key={i} data-testid={`text-copilot-message-${i}`}>{message.role === "assistant" && <Bot size={14} />}{message.text}</div>)}</div><div className="copilot-input"><input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && input.trim()) ask(input); }} placeholder="Ask about this workspace…" data-testid="input-copilot-message" /><button onClick={() => input.trim() && ask(input)} data-testid="button-send-copilot" aria-label="Send question"><TrendingUp size={15} /></button></div><p className="copilot-disclaimer">AI-generated information is for educational and research purposes and may contain errors.</p></aside>;
+}
+
+function SystemPage() {
+  const metrics = [{ label: "Technical agent latency", value: "3.8s", detail: "complete", tone: "positive" }, { label: "Fundamental + RAG latency", value: "6.4s", detail: "complete", tone: "positive" }, { label: "Sentiment agent latency", value: "2.6s", detail: "partial", tone: "caution" }, { label: "Total analysis time", value: "12.8s", detail: "parallel run", tone: "positive" }, { label: "Retrieved documents", value: "5", detail: "4 cited · 1 missing", tone: "caution" }, { label: "Retrieval relevance", value: "84%", detail: "weighted mean", tone: "positive" }, { label: "AI confidence", value: "63/100", detail: "−7 conflict adjustment", tone: "caution" }, { label: "Freshness", value: "78%", detail: "news provider delayed", tone: "caution" }, { label: "Portfolio concentration", value: "42.8%", detail: "financials · above band", tone: "negative" }, { label: "Successful analyses", value: "18", detail: "last 30 days", tone: "positive" }, { label: "Partial analyses", value: "4", detail: "degraded evidence", tone: "caution" }, { label: "Failed analyses", value: "1", detail: "API unavailable · retained", tone: "negative" }];
+  return <div className="page-enter"><PageHeader eyebrow="Observability · 10" title="System Insights" description="Calculated health metrics for the local analysis pipeline. Degraded data stays visible instead of being smoothed over." action={<button className="secondary-button" onClick={() => window.location.reload()} data-testid="button-refresh-system"><RefreshCw size={15} /> Refresh metrics</button>} /><div className="system-banner"><div><Activity size={18} /><div><strong>Demo pipeline operational</strong><span>Last analysis completed at 09:41:12 IST · simulated inputs</span></div></div><StatusBadge tone="caution">1 degraded source</StatusBadge></div><div className="system-grid">{metrics.map(metric => <div className="system-metric" key={metric.label} data-testid={`metric-system-${metric.label.toLowerCase().replaceAll(" ", "-")}`}><span>{metric.label}</span><strong className={metric.tone}>{metric.value}</strong><small>{metric.detail}</small><div className="metric-bar"><i className={metric.tone} style={{ width: metric.value.includes("%") ? metric.value : metric.value === "5" ? "62%" : metric.tone === "negative" ? "24%" : "76%" }}></i></div></div>)}</div><div className="system-bottom"><Panel><PanelHeading title="Failure state matrix" eyebrow="SAFE DEGRADATION" /><div className="failure-list">{[{ label: "Missing document", text: "Confidence reduced; no fabricated excerpt", tone: "caution" }, { label: "API unavailable", text: "Local snapshot retained; timestamp disclosed", tone: "negative" }, { label: "News unavailable", text: "Sentiment agent marked partial", tone: "caution" }, { label: "Agent conflict", text: "Synthesis keeps both views and lowers confidence", tone: "caution" }, { label: "Stale data", text: "Market status marked delayed", tone: "negative" }, { label: "Low confidence", text: "Signal remains research-only; no action path", tone: "caution" }].map(row => <div className="failure-row" key={row.label}><span className={`failure-icon ${row.tone}`}><AlertTriangle size={14} /></span><div><strong>{row.label}</strong><small>{row.text}</small></div><StatusBadge tone={row.tone as Tone}>{row.tone === "negative" ? "Detected" : "Handled"}</StatusBadge></div>)}</div></Panel><Panel className="run-health"><PanelHeading title="Run health" eyebrow="LAST 30 DAYS" /><div className="health-ring"><strong>94%</strong><span>successful or partial</span></div><div className="health-legend"><span><i className="green"></i>Successful <b>18</b></span><span><i className="amber"></i>Partial <b>4</b></span><span><i className="red"></i>Failed <b>1</b></span></div><div className="system-footnote"><ShieldCheck size={14} /> Local state is persisted in browser storage and shared across tabs.</div></Panel></div></div>;
 }
 
 function App() {
-  const [location, setLocation] = useLocation();
-  const [stocks, setStocks] = useState<Stock[]>(() => { try { const saved = localStorage.getItem("signalforge-stocks"); return saved ? JSON.parse(saved) : initialStocks; } catch { return initialStocks; } });
-  const [risk, setRisk] = useState<Risk>(() => (localStorage.getItem("signalforge-risk") as Risk) || "Balanced");
-  useEffect(() => { localStorage.setItem("signalforge-stocks", JSON.stringify(stocks)); }, [stocks]);
-  useEffect(() => { localStorage.setItem("signalforge-risk", risk); }, [risk]);
-  const page = location === "/activity" ? "activity" : location === "/methodology" ? "methodology" : "cockpit";
-  const setPage = (next: string) => setLocation(next === "cockpit" ? "/" : `/${next}`);
-  return <Shell page={page} setPage={setPage}>{page === "cockpit" ? <Cockpit stocks={stocks} setStocks={setStocks} risk={risk} setRisk={setRisk} /> : page === "activity" ? <ActivityPage /> : <MethodologyPage />}</Shell>;
+  const [, setLocation] = useLocation();
+  const [stocks, setStocks] = useState<Stock[]>(() => readLocal("finsight-stocks", STOCKS));
+  const [holdings, setHoldings] = useState<Holding[]>(() => readLocal("finsight-holdings", initialHoldings));
+  const [risk, setRisk] = useState<Risk>(() => readLocal("finsight-risk", "Moderate" as Risk));
+  const [selectedSymbol, setSelectedSymbol] = useState(() => readLocal("finsight-selected", "HDFCBANK"));
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+  const [agentStates, setAgentStates] = useState<Record<AgentKey, AgentState>>({ technical: "complete", fundamental: "complete", sentiment: "degraded" });
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const [tab, setTabState] = useState<Tab>(() => { const path = window.location.pathname; return (Object.keys(pathFor).find(key => pathFor[key as Tab] === path) as Tab) || "overview"; });
+  const selected = stocks.find(s => s.symbol === selectedSymbol) ?? stocks[0];
+  useEffect(() => localStorage.setItem("finsight-stocks", JSON.stringify(stocks)), [stocks]);
+  useEffect(() => localStorage.setItem("finsight-holdings", JSON.stringify(holdings)), [holdings]);
+  useEffect(() => localStorage.setItem("finsight-risk", JSON.stringify(risk)), [risk]);
+  useEffect(() => localStorage.setItem("finsight-selected", JSON.stringify(selectedSymbol)), [selectedSymbol]);
+  useEffect(() => { const onNavigate = (e: Event) => { const target = (e as CustomEvent<Tab>).detail; if (target && target in pathFor) setTab(target); }; const onRisk = (e: Event) => setRisk((e as CustomEvent<Risk>).detail); const onToggle = (e: Event) => { const symbol = (e as CustomEvent<string>).detail; setStocks(current => current.map(s => s.symbol === symbol ? { ...s, watch: !s.watch } : s)); }; window.addEventListener("navigate", onNavigate); window.addEventListener("set-risk", onRisk); window.addEventListener("toggle-watch", onToggle); return () => { window.removeEventListener("navigate", onNavigate); window.removeEventListener("set-risk", onRisk); window.removeEventListener("toggle-watch", onToggle); }; }, []);
+  const setTab = (next: Tab) => { setTabState(next); setLocation(pathFor[next]); if (next === "copilot") setCopilotOpen(true); };
+  const runAnalysis = () => { setAnalysisRunning(true); setAgentStates({ technical: "running", fundamental: "running", sentiment: "running" }); window.setTimeout(() => { setAgentStates({ technical: "complete", fundamental: "complete", sentiment: "degraded" }); setAnalysisRunning(false); }, 1600); };
+  const retryAgent = (key: AgentKey) => { setAgentStates(s => ({ ...s, [key]: "running" })); window.setTimeout(() => setAgentStates(s => ({ ...s, [key]: key === "sentiment" ? "degraded" : "complete" })), 900); };
+  const app = tab === "overview" ? <Overview stocks={stocks} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} risk={risk} analysisRunning={analysisRunning} agentStates={agentStates} onRun={runAnalysis} onRetry={retryAgent} /> : tab === "market" ? <MarketPage stocks={stocks} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} /> : tab === "analysis" ? <AnalysisPage stocks={stocks} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} risk={risk} analysisRunning={analysisRunning} agentStates={agentStates} onRun={runAnalysis} onRetry={retryAgent} /> : tab === "portfolio" ? <PortfolioPage holdings={holdings} setHoldings={setHoldings} stocks={stocks} /> : tab === "watchlist" ? <WatchlistPage stocks={stocks} setStocks={setStocks} onSelect={s => { setSelectedSymbol(s); setTab("analysis"); }} /> : tab === "news" ? <NewsPage /> : tab === "evidence" ? <EvidencePage /> : tab === "risk" ? <RiskPage risk={risk} setRisk={setRisk} /> : tab === "system" ? <SystemPage /> : <Overview stocks={stocks} selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol} risk={risk} analysisRunning={analysisRunning} agentStates={agentStates} onRun={runAnalysis} onRetry={retryAgent} />;
+  return <Shell tab={tab} setTab={setTab} onCopilot={() => setCopilotOpen(!copilotOpen)} copilotOpen={copilotOpen}>{app}<Copilot open={copilotOpen} onClose={() => setCopilotOpen(false)} selected={selected} risk={risk} tab={tab} /></Shell>;
 }
 
 export default App;
