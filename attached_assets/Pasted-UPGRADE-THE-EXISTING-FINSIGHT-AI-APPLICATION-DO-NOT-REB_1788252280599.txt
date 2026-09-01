@@ -1,0 +1,605 @@
+UPGRADE THE EXISTING FINSIGHT AI APPLICATION.
+
+DO NOT REBUILD THE PROJECT FROM SCRATCH.
+PRESERVE ALL CURRENT WORKING FEATURES.
+The goal is to make the existing application satisfy EVERY requirement in our PS-Sprint1 hackathon problem statement.
+
+Before making changes, inspect the existing frontend, backend, database, API routes, AI logic and current data flow. Reuse existing components wherever possible.
+
+CRITICAL RULE:
+Do NOT create fake UI elements that merely look functional. Every requirement below must have an actual working interaction or clearly labelled DEMO MODE implementation.
+
+==================================================
+
+1. SIGNAL CLASSIFICATION MODULE
+   ==================================================
+
+Implement a real signal-classification pipeline using at least THREE independent dimensions:
+
+A. PRICE / MOMENTUM
+
+* price change
+* moving average relationship
+* RSI
+* momentum
+
+B. VOLUME / MARKET ACTIVITY
+
+* current volume
+* average volume
+* volume anomaly
+* volatility if available
+
+C. SENTIMENT
+
+* recent news/text sentiment
+* positive / neutral / negative classification
+* sentiment score
+
+Each dimension must independently produce a structured result:
+
+{
+"signal": "BULLISH | NEUTRAL | BEARISH",
+"confidence": 0-100,
+"reasoning": "...",
+"timestamp": "..."
+}
+
+Then create a combined classified signal:
+
+BULLISH / NEUTRAL / BEARISH
+
+with:
+
+* overall confidence
+* explanation
+* contributing dimensions
+
+Show all three dimensions visibly in the UI.
+
+==================================================
+2. MULTI-AGENT ARCHITECTURE
+===========================
+
+Implement at least THREE specialized agents:
+
+TECHNICAL AGENT
+Role:
+Analyze price, momentum, RSI and moving averages.
+
+Structured output:
+signal
+confidence
+reasoning
+metrics
+
+FUNDAMENTAL AGENT
+Role:
+Analyze financial/regulatory documents using RAG.
+
+Structured output:
+signal
+confidence
+reasoning
+retrieved_sources
+evidence
+
+SENTIMENT AGENT
+Role:
+Analyze relevant news/text sentiment.
+
+Structured output:
+signal
+confidence
+reasoning
+sentiment_score
+sources
+
+IMPORTANT:
+The three agents must execute IN PARALLEL, not sequentially.
+
+Create an orchestrator that dispatches all three agents concurrently and waits for their results.
+
+Then pass their structured outputs to a SYNTHESIS AGENT.
+
+==================================================
+3. SYNTHESIS AGENT
+==================
+
+The synthesis agent must receive:
+
+technical result
+fundamental result
+sentiment result
+user risk profile
+portfolio exposure
+
+It must produce:
+
+overall_signal
+confidence
+reasoning
+key_risks
+supporting_evidence
+personalized_interpretation
+
+Display the complete reasoning chain in the UI:
+
+Raw data
+↓
+Technical Agent
+↓
+Fundamental Agent
+↓
+Sentiment Agent
+↓
+Retrieved evidence
+↓
+User profile
+↓
+Synthesis Agent
+↓
+Final result
+
+Allow the user to expand each stage.
+
+==================================================
+4. REAL RAG IMPLEMENTATION
+==========================
+
+Implement a working retrieval-augmented generation component.
+
+Create a small document corpus for the demo containing financial/regulatory documents.
+
+The system must:
+
+1. Store/index documents.
+2. Split documents into searchable chunks.
+3. Accept a natural-language query.
+4. Retrieve the most relevant chunks.
+5. Send retrieved context to the Fundamental Agent.
+6. Generate the fundamental analysis using ONLY the retrieved context for document-specific claims.
+7. Return source metadata.
+
+Each retrieved source should contain:
+
+* document name
+* section/page if available
+* retrieved excerpt
+* relevance score
+
+Display these sources directly underneath the Fundamental Agent result.
+
+Example UI:
+
+EVIDENCE USED
+
+Financial Filing
+Page/Section: ...
+Relevance: 91%
+Excerpt: ...
+
+USED BY FUNDAMENTAL AGENT
+
+Never display an invented citation.
+
+==================================================
+5. USER PROFILING / PERSONALIZATION
+===================================
+
+Create persistent user profiles containing:
+
+* risk tolerance:
+  Conservative
+  Moderate
+  Aggressive
+
+* investment horizon
+
+* portfolio holdings
+
+* sector exposure
+
+* concentration/risk information
+
+IMPORTANT DEMONSTRATION:
+
+Create a "Compare Profiles" feature.
+
+Run the EXACT SAME market input through:
+
+Profile A:
+Conservative
+
+Profile B:
+Aggressive
+
+The market input must remain identical.
+
+Show the two outputs side-by-side.
+
+Example:
+
+SAME MARKET INPUT
+
+Conservative:
+Signal = WATCH
+Confidence = 72%
+Reason = High risk relative to user's tolerance.
+
+Aggressive:
+Signal = CONSIDER
+Confidence = 78%
+Reason = Risk is more acceptable for this profile.
+
+This difference must be produced by the actual personalization logic, not hardcoded UI text.
+
+==================================================
+6. LIVE / NEAR-REAL-TIME DATA
+=============================
+
+Use a legitimate market-data API if one is already configured.
+
+If an API is not available, implement a clearly labelled SIMULATED DEMO MODE.
+
+Never claim simulated data is live.
+
+Every market data card must show:
+
+LIVE DATA
+or
+SIMULATED DEMO DATA
+
+and:
+
+Last updated: [actual timestamp]
+
+Add:
+REFRESH DATA
+
+When data retrieval fails:
+
+* keep the interface usable
+* show a warning
+* show the last successful timestamp if available
+* reduce confidence if the missing data affects analysis
+
+==================================================
+7. MARKET DASHBOARD
+===================
+
+The main dashboard must visibly show:
+
+* selected stock
+* current price
+* daily change
+* volume
+* market status
+* technical signal
+* volume/activity signal
+* sentiment signal
+* overall AI classification
+* confidence
+* last updated timestamp
+
+Use clear classification labels:
+
+BULLISH
+NEUTRAL
+BEARISH
+WATCH / CAUTION where appropriate
+
+==================================================
+8. PORTFOLIO / WATCHLIST
+========================
+
+Make the portfolio/watchlist state persistent.
+
+Allow users to:
+
+* add stock
+* remove stock
+* set quantity
+* set average price
+
+Calculate:
+
+* portfolio value
+* gain/loss
+* allocation
+* sector concentration
+* risk concentration score
+
+Display the current portfolio/watchlist on the main interface.
+
+==================================================
+9. PERFORMANCE LOG
+==================
+
+Implement a session performance log.
+
+For EVERY analysis session record at least THREE measurable metrics.
+
+Use real calculated values, not random numbers.
+
+Required examples:
+
+1. Agent response latency
+
+   * Technical latency
+   * Fundamental latency
+   * Sentiment latency
+   * Total synthesis latency
+
+2. Signal performance / accuracy
+
+   * If 30-day forward-return data is available, compare prediction with outcome.
+   * Otherwise clearly label the metric as DEMO / BACKTEST and explain the methodology.
+
+3. Portfolio risk concentration score
+
+   * Calculate from the user's portfolio allocation.
+
+Also show:
+
+Session ID
+Timestamp
+Stock analyzed
+Agent latencies
+Overall confidence
+Risk score
+
+Create a Performance / System Insights tab where these metrics can be reviewed.
+
+==================================================
+10. END-TO-END DEMO MODE
+========================
+
+Create a clearly visible:
+
+RUN FULL DEMO
+
+button.
+
+It must execute the entire pipeline:
+
+RAW MARKET DATA
+↓
+DATA INGESTION
+↓
+Technical Agent
++
+Fundamental Agent + RAG
++
+Sentiment Agent
+↓
+User Risk Profile
+↓
+Synthesis Agent
+↓
+Final Personalized Intelligence
+
+Show the progress of every stage.
+
+At the end display:
+
+FINAL SIGNAL
+CONFIDENCE
+REASONING
+RISKS
+EVIDENCE
+USER PROFILE
+PERFORMANCE METRICS
+
+The entire reasoning chain must remain visible and expandable.
+
+==================================================
+11. DEGRADED-DATA SCENARIO
+==========================
+
+Implement a working demo failure scenario.
+
+Add:
+
+SIMULATE DATA ISSUE
+
+with choices:
+
+* Missing financial filing
+* Market data unavailable
+* News feed unavailable
+* Conflicting agent signals
+
+For example, if the Fundamental Agent cannot retrieve a filing:
+
+Display:
+
+FUNDAMENTAL EVIDENCE UNAVAILABLE
+
+The system must:
+
+* NOT invent evidence
+* reduce confidence
+* explain what is missing
+* continue using available agents
+* clearly mark the final result as partially grounded
+
+If Technical = BULLISH and Sentiment = BEARISH:
+
+show:
+
+CONFLICTING SIGNALS DETECTED
+
+Then let the Synthesis Agent explain the disagreement.
+
+The pipeline must NOT crash.
+
+==================================================
+12. AI COPILOT
+==============
+
+Keep/add a FinSight AI Copilot.
+
+The user can ask:
+
+"Why is this signal bullish?"
+
+"What evidence supports the fundamental result?"
+
+"How does my risk profile change the result?"
+
+"Why are the agents disagreeing?"
+
+"Summarize the retrieved filing."
+
+The Copilot must use actual application data and retrieved evidence.
+
+When discussing document facts, show the source.
+
+Do not fabricate citations.
+
+==================================================
+13. WRITTEN ARCHITECTURE FOR JUDGES
+===================================
+
+Add a "How It Works" / "Architecture" tab.
+
+Include a concise visual diagram:
+
+Market Data
+Financial Documents
+News
+User Profile
+↓
+Data Ingestion
+↓
+┌─────────────┬──────────────┬─────────────┐
+Technical     Fundamental    Sentiment
+Agent         Agent          Agent
+↓
+RAG Retrieval
+↓
+Evidence Sources
+└─────────────┴──────────────┘
+↓
+Risk Personalization
+↓
+Synthesis Agent
+↓
+Personalized Intelligence
+
+Also provide a written explanation of:
+
+* agent roles
+* structured output contracts
+* parallel execution
+* RAG process
+* personalization logic
+* synthesis logic
+* failure handling
+* performance metrics
+
+Make this readable by judges.
+
+==================================================
+14. UI IMPROVEMENT
+==================
+
+Keep the current FinSight AI branding.
+
+Make the interface feel like a professional AI financial research terminal.
+
+Navigation should include:
+
+Overview
+Market
+AI Analysis
+Portfolio
+Watchlist
+News & Sentiment
+Evidence / RAG
+Risk Lab
+AI Copilot
+Performance
+Architecture
+
+Use:
+
+* dark professional theme
+* clean typography
+* subtle gradients
+* glass cards
+* clear bullish/neutral/bearish status indicators
+* responsive layout
+* useful charts
+* loading states
+* tooltips
+* expandable reasoning
+
+Do not add pages that contain only placeholder text.
+
+==================================================
+15. DATA INTEGRITY
+==================
+
+This is extremely important.
+
+Never label demo data as live.
+
+Never invent:
+
+* sources
+* citations
+* market prices
+* latency measurements
+* accuracy measurements
+
+Clearly distinguish:
+
+LIVE
+SIMULATED
+DEMO
+UNAVAILABLE
+
+For every AI-generated financial conclusion, show its evidence or explain why evidence is unavailable.
+
+==================================================
+16. FINAL VALIDATION
+====================
+
+After implementation, test the following exact checklist:
+
+[ ] Three independent signal dimensions
+[ ] Signal classification + confidence + reasoning
+[ ] Three specialized agents
+[ ] Agents execute in parallel
+[ ] Structured output contracts
+[ ] Synthesis layer
+[ ] Working RAG retrieval
+[ ] Retrieved source attribution visible
+[ ] Persistent user risk profile
+[ ] Same market input gives different results for different profiles
+[ ] Current market signal visible
+[ ] Portfolio/watchlist visible
+[ ] Three measurable session metrics
+[ ] Full end-to-end demo
+[ ] Full reasoning chain visible
+[ ] Degraded-data scenario works
+[ ] No uncited claims when evidence is unavailable
+[ ] Written architecture/decision logic
+[ ] AI Copilot
+[ ] Live/simulated data status clearly labelled
+[ ] Refresh/timestamp functionality
+[ ] No exposed API keys
+[ ] No broken buttons
+[ ] No major console/runtime errors
+
+Do not stop after creating the UI.
+
+Actually connect and test the underlying logic.
+
+At the end, provide a short implementation report listing:
+
+1. Which requirements are fully implemented.
+2. Which are implemented in demo/simulated mode.
+3. Which still require configuration such as an API key or external data source.
